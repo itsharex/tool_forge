@@ -49,6 +49,9 @@ import { meta as curlConvertMeta } from './curl-convert/meta'
 import TextDiff from './text-diff'
 import { meta as textDiffMeta } from './text-diff/meta'
 
+import CharlesKey from './charles-key'
+import { meta as charlesKeyMeta } from './charles-key/meta'
+
 export interface ToolEntry {
   meta: ToolMeta
   Component: ComponentType
@@ -71,6 +74,7 @@ export const tools: ToolEntry[] = [
   { meta: qrcodeMeta, Component: QrCodeTool },
   { meta: curlConvertMeta, Component: CurlConvert },
   { meta: textDiffMeta, Component: TextDiff },
+  { meta: charlesKeyMeta, Component: CharlesKey },
 ]
 
 export const toolRegistry: ToolMeta[] = tools.map((t) => t.meta)

@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"fmt"
+
+	"tool_forge/backend/tools/charles"
 )
 
 // App struct
@@ -21,7 +22,7 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
-// Greet returns a greeting for the given name
-func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello %s, It's show time!", name)
+// GenerateCharlesKey 根据名称生成 Charles 激活码
+func (a *App) GenerateCharlesKey(name string) string {
+	return charles.Generate(name)
 }

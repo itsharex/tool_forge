@@ -1,5 +1,5 @@
-import { NavLink } from 'react-router-dom'
-import { ChevronLeft, Hammer, User } from 'lucide-react'
+import { NavLink, Link } from 'react-router-dom'
+import { ChevronLeft, Hammer, Home as HomeIcon, User } from 'lucide-react'
 import { useLayoutStore } from '@/stores/layout'
 import {
   CATEGORY_LABELS,
@@ -25,8 +25,9 @@ export function Sidebar() {
   const collapsed = useLayoutStore((s) => s.sidebarCollapsed)
   const toggleSidebar = useLayoutStore((s) => s.toggleSidebar)
   const visibility = useToolsStore((s) => s.visibility)
+  const order = useToolsStore((s) => s.order)
   const nickname = useProfileStore((s) => s.nickname)
-  const grouped = getVisibleToolsByCategory(visibility)
+  const grouped = getVisibleToolsByCategory(visibility, order)
 
   return (
     <aside
@@ -36,14 +37,18 @@ export function Sidebar() {
       )}
     >
       <div className="flex h-14 items-center justify-between px-3 border-b border-border">
-        <div className="flex items-center gap-2 overflow-hidden">
+        <Link
+          to="/"
+          title="回到首页"
+          className="flex items-center gap-2 overflow-hidden rounded-md transition-opacity hover:opacity-80"
+        >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Hammer className="h-4 w-4" />
           </div>
           {!collapsed && (
             <span className="truncate font-semibold text-sm">Tool Forge</span>
           )}
-        </div>
+        </Link>
         <button
           onClick={toggleSidebar}
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
@@ -56,6 +61,24 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-2">
+        <div className="mb-3 px-2">
+          <NavLink
+            to="/"
+            end
+            title={collapsed ? '首页' : undefined}
+            className={({ isActive }) =>
+              cn(
+                'flex h-8 items-center gap-2 rounded-md px-2 text-sm text-foreground/80 transition-colors hover:bg-accent hover:text-foreground',
+                isActive && 'bg-accent font-medium text-foreground',
+                collapsed && 'justify-center'
+              )
+            }
+          >
+            <HomeIcon className="h-4 w-4 shrink-0" />
+            {!collapsed && <span className="truncate">首页</span>}
+          </NavLink>
+        </div>
+
         {CATEGORY_ORDER.map((cat) => {
           const tools = grouped[cat]
           if (!tools || tools.length === 0) return null
