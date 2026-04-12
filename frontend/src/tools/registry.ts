@@ -19,6 +19,18 @@ import { meta as timestampMeta } from './timestamp/meta'
 import JwtDecode from './jwt-decode'
 import { meta as jwtDecodeMeta } from './jwt-decode/meta'
 
+import Color from './color'
+import { meta as colorMeta } from './color/meta'
+
+import Uuid from './uuid'
+import { meta as uuidMeta } from './uuid/meta'
+
+import Hash from './hash'
+import { meta as hashMeta } from './hash/meta'
+
+import QrCodeTool from './qrcode'
+import { meta as qrcodeMeta } from './qrcode/meta'
+
 export interface ToolEntry {
   meta: ToolMeta
   Component: ComponentType
@@ -31,6 +43,10 @@ export const tools: ToolEntry[] = [
   { meta: numberBaseMeta, Component: NumberBase },
   { meta: timestampMeta, Component: Timestamp },
   { meta: jwtDecodeMeta, Component: JwtDecode },
+  { meta: colorMeta, Component: Color },
+  { meta: uuidMeta, Component: Uuid },
+  { meta: hashMeta, Component: Hash },
+  { meta: qrcodeMeta, Component: QrCodeTool },
 ]
 
 export const toolRegistry: ToolMeta[] = tools.map((t) => t.meta)
