@@ -35,8 +35,8 @@ export function Profile() {
   const section = SECTIONS.find((s) => s.id === active)!
 
   return (
-    <div className="flex h-full">
-      <aside className="w-52 shrink-0 border-r border-border bg-card p-3">
+    <div className="ambient flex h-full">
+      <aside className="w-52 shrink-0 border-r border-border bg-card/80 p-3">
         <h2 className="mb-3 px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           个人主页
         </h2>

@@ -23,8 +23,10 @@ import {
   useToolsStore,
   type ToolMeta,
 } from '@/stores/tools'
+import { useLayoutStore } from '@/stores/layout'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { iconClassForCategory } from '@/lib/categoryColors'
 
 export function Home() {
   const visibility = useToolsStore((s) => s.visibility)
@@ -32,6 +34,7 @@ export function Home() {
   const setOrder = useToolsStore((s) => s.setOrder)
   const setVisibility = useToolsStore((s) => s.setVisibility)
   const resetOrder = useToolsStore((s) => s.resetOrder)
+  const styleId = useLayoutStore((s) => s.styleId)
 
   const allTools = useMemo(() => getAllTools(order), [order])
   const [isManaging, setIsManaging] = useState(false)
@@ -59,61 +62,72 @@ export function Home() {
   ).length
 
   return (
-    <div className="mx-auto max-w-6xl p-6">
-      <header className="mb-6 flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Tool Forge</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {isManaging
-              ? `全部 ${allTools.length} 个工具 · 拖动卡片排序，点击开关启用 / 隐藏`
-              : `共 ${visibleCount} 个工具 · 拖动卡片可调整顺序`}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {isManaging && order.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={resetOrder}>
-              <RotateCcw className="h-3.5 w-3.5" />
-              重置顺序
+    <div className="ambient min-h-full">
+      <div className="mx-auto max-w-6xl p-6">
+        <header className="mb-6 flex items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {styleId === 'nebula' ? (
+                <>
+                  Tool <span className="bg-gradient-to-r from-violet-500 to-fuchsia-500 bg-clip-text text-transparent">Forge</span>
+                </>
+              ) : (
+                'Tool Forge'
+              )}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isManaging
+                ? `全部 ${allTools.length} 个工具 · 拖动卡片排序，点击开关启用 / 隐藏`
+                : `共 ${visibleCount} 个工具 · 拖动卡片可调整顺序`}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            {isManaging && order.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={resetOrder}>
+                <RotateCcw className="h-3.5 w-3.5" />
+                重置顺序
+              </Button>
+            )}
+            <Button
+              variant={isManaging ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setIsManaging((v) => !v)}
+            >
+              {isManaging ? '完成' : '管理'}
             </Button>
-          )}
-          <Button
-            variant={isManaging ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setIsManaging((v) => !v)}
-          >
-            {isManaging ? '完成' : '管理'}
-          </Button>
-        </div>
-      </header>
+          </div>
+        </header>
 
-      {displayedTools.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-12 text-center text-sm text-muted-foreground">
-          没有启用的工具，点右上角「管理」开启一些吧
-        </div>
-      ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={displayedTools.map((t) => t.id)}
-            strategy={rectSortingStrategy}
+        {displayedTools.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border p-12 text-center text-sm text-muted-foreground">
+            没有启用的工具，点右上角「管理」开启一些吧
+          </div>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {displayedTools.map((tool) => (
-                <SortableCard
-                  key={tool.id}
-                  tool={tool}
-                  visible={isVisible(tool.id, visibility, tool.defaultVisible)}
-                  managing={isManaging}
-                  onToggle={(v) => setVisibility(tool.id, v)}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-      )}
+            <SortableContext
+              items={displayedTools.map((t) => t.id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {displayedTools.map((tool) => (
+                  <SortableCard
+                    key={tool.id}
+                    tool={tool}
+                    visible={isVisible(tool.id, visibility, tool.defaultVisible)}
+                    managing={isManaging}
+                    styleId={styleId}
+                    onToggle={(v) => setVisibility(tool.id, v)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
+      </div>
     </div>
   )
 }
@@ -122,11 +136,13 @@ function SortableCard({
   tool,
   visible,
   managing,
+  styleId,
   onToggle,
 }: {
   tool: ToolMeta
   visible: boolean
   managing: boolean
+  styleId: string
   onToggle: (v: boolean) => void
 }) {
   const navigate = useNavigate()
@@ -140,12 +156,12 @@ function SortableCard({
     opacity: isDragging ? 0.5 : 1,
   }
 
-  // 管理模式下点击卡片不导航（避免误触）；浏览模式下点击导航
-  // 拖动由 dnd-kit 的 distance:5 约束区分 —— 挪动 <5px 是点击，≥5px 才进入拖动
   const handleClick = () => {
     if (managing) return
     navigate(tool.path)
   }
+
+  const nebula = styleId === 'nebula'
 
   return (
     <div
@@ -155,15 +171,22 @@ function SortableCard({
       {...attributes}
       {...listeners}
       className={cn(
-        'group relative rounded-lg border border-border bg-card p-4 transition-colors touch-none',
+        'group relative rounded-lg border bg-card p-4 transition-all touch-none',
+        nebula ? 'border-border/60 card-soft' : 'border-border',
         !managing && 'cursor-pointer hover:border-foreground/20 hover:bg-accent',
+        nebula && !managing && 'hover:-translate-y-0.5 hover:border-border',
         managing && 'cursor-grab active:cursor-grabbing',
         !visible && 'opacity-50',
         isDragging && 'z-10 cursor-grabbing shadow-lg'
       )}
     >
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-secondary text-foreground">
+        <div
+          className={cn(
+            'flex h-9 w-9 shrink-0 items-center justify-center rounded-md',
+            iconClassForCategory(tool.category, styleId)
+          )}
+        >
           <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
@@ -202,16 +225,18 @@ function VisibilitySwitch({
       onClick={() => onChange(!checked)}
       role="switch"
       aria-checked={checked}
-      className={cn(
-        'relative h-5 w-9 shrink-0 rounded-full transition-colors',
-        checked ? 'bg-primary' : 'bg-muted'
-      )}
       title={checked ? '点击隐藏' : '点击显示'}
+      className={cn(
+        'inline-flex h-5 w-[34px] shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors',
+        checked
+          ? 'bg-emerald-500 hover:bg-emerald-600'
+          : 'bg-zinc-300 hover:bg-zinc-400 dark:bg-zinc-700 dark:hover:bg-zinc-600'
+      )}
     >
       <span
         className={cn(
-          'absolute top-0.5 h-4 w-4 rounded-full bg-background shadow transition-transform',
-          checked ? 'translate-x-[18px]' : 'translate-x-0.5'
+          'block h-4 w-4 rounded-full bg-white shadow-sm ring-0 transition-transform duration-150',
+          checked ? 'translate-x-[14px]' : 'translate-x-0'
         )}
       />
     </button>

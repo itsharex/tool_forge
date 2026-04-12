@@ -1,5 +1,5 @@
-import { Moon, Sun, Monitor } from 'lucide-react'
-import { useLayoutStore } from '@/stores/layout'
+import { Moon, Sun, Monitor, Check } from 'lucide-react'
+import { useLayoutStore, type StyleId } from '@/stores/layout'
 import { useProfileStore } from '@/stores/profile'
 import { cn } from '@/lib/utils'
 
@@ -8,13 +8,15 @@ export function BasicSection() {
   const setNickname = useProfileStore((s) => s.setNickname)
   const theme = useLayoutStore((s) => s.theme)
   const setTheme = useLayoutStore((s) => s.setTheme)
+  const styleId = useLayoutStore((s) => s.styleId)
+  const setStyle = useLayoutStore((s) => s.setStyle)
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <header>
         <h1 className="text-xl font-semibold">基础信息</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          配置昵称与界面偏好，这些信息只存在本地。
+          配置昵称与界面外观，这些信息只存在本地。
         </p>
       </header>
 
@@ -27,7 +29,7 @@ export function BasicSection() {
         />
       </Field>
 
-      <Field label="主题">
+      <Field label="明暗模式">
         <div className="flex gap-2">
           <ThemeOption
             active={theme === 'light'}
@@ -46,6 +48,25 @@ export function BasicSection() {
             onClick={() => setTheme('system')}
             icon={<Monitor className="h-4 w-4" />}
             label="跟随系统"
+          />
+        </div>
+      </Field>
+
+      <Field label="界面风格" hint="主题会影响首页与个人页的氛围，工具内部保持专注。">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <StylePreviewCard
+            id="minimal"
+            active={styleId === 'minimal'}
+            onSelect={setStyle}
+            title="Minimal"
+            description="黑白极简，纯粹专注"
+          />
+          <StylePreviewCard
+            id="nebula"
+            active={styleId === 'nebula'}
+            onSelect={setStyle}
+            title="Nebula"
+            description="紫色氛围，星云深空"
           />
         </div>
       </Field>
@@ -95,5 +116,76 @@ function ThemeOption({
       {icon}
       {label}
     </button>
+  )
+}
+
+function StylePreviewCard({
+  id,
+  active,
+  onSelect,
+  title,
+  description,
+}: {
+  id: StyleId
+  active: boolean
+  onSelect: (id: StyleId) => void
+  title: string
+  description: string
+}) {
+  return (
+    <button
+      onClick={() => onSelect(id)}
+      className={cn(
+        'group relative flex flex-col gap-3 rounded-lg border p-3 text-left transition-all',
+        active
+          ? 'border-primary ring-2 ring-primary/20'
+          : 'border-border hover:border-foreground/30'
+      )}
+    >
+      <StylePreview styleId={id} />
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm font-medium">{title}</div>
+          <div className="text-xs text-muted-foreground">{description}</div>
+        </div>
+        {active && (
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <Check className="h-3 w-3" />
+          </div>
+        )}
+      </div>
+    </button>
+  )
+}
+
+function StylePreview({ styleId }: { styleId: StyleId }) {
+  if (styleId === 'nebula') {
+    return (
+      <div className="relative h-20 overflow-hidden rounded-md bg-[hsl(240_20%_5%)]">
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(circle at 15% 20%, hsl(258 90% 50% / 0.35), transparent 55%), radial-gradient(circle at 85% 80%, hsl(280 90% 45% / 0.25), transparent 55%)',
+          }}
+        />
+        <div className="relative flex h-full items-center gap-2 p-3">
+          <div className="h-6 w-6 rounded-md bg-violet-500/30 ring-1 ring-violet-400/40" />
+          <div className="h-6 w-6 rounded-md bg-rose-500/30 ring-1 ring-rose-400/40" />
+          <div className="h-6 w-6 rounded-md bg-emerald-500/30 ring-1 ring-emerald-400/40" />
+          <div className="ml-auto h-1.5 w-8 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-400" />
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="relative h-20 overflow-hidden rounded-md bg-white ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+      <div className="flex h-full items-center gap-2 p-3">
+        <div className="h-6 w-6 rounded-md bg-zinc-100 dark:bg-zinc-800" />
+        <div className="h-6 w-6 rounded-md bg-zinc-100 dark:bg-zinc-800" />
+        <div className="h-6 w-6 rounded-md bg-zinc-100 dark:bg-zinc-800" />
+        <div className="ml-auto h-1.5 w-8 rounded-full bg-zinc-900 dark:bg-zinc-100" />
+      </div>
+    </div>
   )
 }
