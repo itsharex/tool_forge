@@ -1,7 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { Upload } from 'lucide-react'
 import { ToolShell } from '@/components/tool/ToolShell'
 import { TextPanel } from '@/components/tool/TextPanel'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useFileDrop } from '@/lib/useFileDrop'
 import { meta } from './meta'
 import { jsonToGo } from './logic'
 
@@ -29,6 +32,8 @@ export default function JsonToGo() {
   const [rootName, setRootName] = useState('Root')
   const [useOmitempty, setUseOmitempty] = useState(false)
   const [usePointers, setUsePointers] = useState(false)
+  const [dropError, setDropError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { output, error } = useMemo(() => {
     if (!input.trim()) return { output: '', error: '' }
@@ -42,6 +47,27 @@ export default function JsonToGo() {
     }
   }, [input, rootName, useOmitempty, usePointers])
 
+  const { dragOver, dragHandlers } = useFileDrop({
+    accept: ['.json', '.txt'],
+    onLoad: (r) => {
+      if (r.kind === 'text') {
+        setInput(r.text)
+        setDropError('')
+      }
+    },
+    onError: (msg) => setDropError(msg),
+  })
+
+  const handleImport = async (file: File) => {
+    try {
+      const text = await file.text()
+      setInput(text)
+      setDropError('')
+    } catch (e) {
+      setDropError(e instanceof Error ? e.message : '读取文件失败')
+    }
+  }
+
   return (
     <ToolShell
       title={meta.title}
@@ -50,6 +76,25 @@ export default function JsonToGo() {
       onLoadExample={() => setInput(EXAMPLE)}
       actions={
         <div className="flex items-center gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,.txt,application/json,text/plain"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) handleImport(f)
+              e.target.value = ''
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            导入
+          </Button>
           <label className="flex items-center gap-1.5 text-xs">
             <span className="text-muted-foreground">名称</span>
             <input
@@ -68,13 +113,26 @@ export default function JsonToGo() {
       }
     >
       <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-2">
-        <TextPanel
-          label="JSON 输入"
-          value={input}
-          onChange={setInput}
-          error={error}
-          placeholder='粘贴 JSON，如 {"name":"Alice"}'
-        />
+        <div
+          {...dragHandlers}
+          className={cn(
+            'relative flex min-h-[280px] flex-col rounded-lg transition',
+            dragOver && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+          )}
+        >
+          <TextPanel
+            label="JSON 输入"
+            value={input}
+            onChange={setInput}
+            error={error || dropError}
+            placeholder='粘贴 JSON，或将 .json 文件拖到此处…'
+          />
+          {dragOver && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-primary/10 text-sm font-medium text-primary">
+              松开以导入文件
+            </div>
+          )}
+        </div>
         <TextPanel label="Go struct" value={output} readOnly />
       </div>
     </ToolShell>

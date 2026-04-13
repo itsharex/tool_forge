@@ -33,7 +33,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'flex h-full flex-col border-r border-border bg-card transition-[width] duration-200',
+        'flex h-full flex-col border-r border-border bg-sidebar transition-[width] duration-200',
         collapsed ? 'w-14' : 'w-56'
       )}
     >
@@ -130,7 +130,7 @@ export function Sidebar() {
             )
           }
         >
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground">
             <User className="h-4 w-4" />
           </div>
           {!collapsed && <span className="truncate">{nickname}</span>}

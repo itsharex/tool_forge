@@ -7,6 +7,9 @@ import { meta as mobileForensicMeta } from './mobile-forensic/meta'
 import JsonEditor from './json-editor'
 import { meta as jsonEditorMeta } from './json-editor/meta'
 
+import Plist from './plist'
+import { meta as plistMeta } from './plist/meta'
+
 import JsonToGo from './json-to-go'
 import { meta as jsonToGoMeta } from './json-to-go/meta'
 
@@ -55,6 +58,12 @@ import { meta as textDiffMeta } from './text-diff/meta'
 import CharlesKey from './charles-key'
 import { meta as charlesKeyMeta } from './charles-key/meta'
 
+import HexEditor from './hex-editor'
+import { meta as hexEditorMeta } from './hex-editor/meta'
+
+import Mmkv from './mmkv'
+import { meta as mmkvMeta } from './mmkv/meta'
+
 export interface ToolEntry {
   meta: ToolMeta
   Component: ComponentType
@@ -63,6 +72,7 @@ export interface ToolEntry {
 export const tools: ToolEntry[] = [
   { meta: mobileForensicMeta, Component: MobileForensic },
   { meta: jsonEditorMeta, Component: JsonEditor },
+  { meta: plistMeta, Component: Plist },
   { meta: jsonToGoMeta, Component: JsonToGo },
   { meta: xmlEditorMeta, Component: XmlEditor },
   { meta: base64TextMeta, Component: Base64Text },
@@ -79,6 +89,8 @@ export const tools: ToolEntry[] = [
   { meta: curlConvertMeta, Component: CurlConvert },
   { meta: textDiffMeta, Component: TextDiff },
   { meta: charlesKeyMeta, Component: CharlesKey },
+  { meta: hexEditorMeta, Component: HexEditor },
+  { meta: mmkvMeta, Component: Mmkv },
 ]
 
 export const toolRegistry: ToolMeta[] = tools.map((t) => t.meta)

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import CodeMirror, { EditorView } from '@uiw/react-codemirror'
 import type { Extension } from '@codemirror/state'
 import { useLayoutStore } from '@/stores/layout'
+import { cn } from '@/lib/utils'
 
 interface CodeEditorProps {
   value: string
@@ -9,6 +10,7 @@ interface CodeEditorProps {
   extensions?: Extension[]
   readOnly?: boolean
   placeholder?: string
+  /** 传 "100%" 时会让编辑器自己接管滚动并填满父级高度 */
   minHeight?: string
   className?: string
 }
@@ -43,16 +45,27 @@ export function CodeEditor({
     return () => mq.removeEventListener('change', update)
   }, [theme])
 
+  const fill = minHeight === '100%'
+
   return (
-    <div className={className}>
+    <div className={cn(fill && 'flex min-h-0 flex-col', className)}>
       <CodeMirror
         value={value}
         onChange={onChange}
         readOnly={readOnly}
         placeholder={placeholder}
-        minHeight={minHeight}
+        height={fill ? '100%' : undefined}
+        minHeight={fill ? undefined : minHeight}
         theme={dark ? 'dark' : 'light'}
-        extensions={[EditorView.lineWrapping, ...extensions]}
+        className={fill ? 'flex-1 min-h-0 overflow-hidden' : undefined}
+        extensions={[
+          EditorView.lineWrapping,
+          EditorView.theme({
+            '&': fill ? { height: '100%' } : {},
+            '.cm-scroller': { overflow: 'auto' },
+          }),
+          ...extensions,
+        ]}
         basicSetup={{
           lineNumbers: true,
           highlightActiveLine: !readOnly,
