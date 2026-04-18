@@ -11,6 +11,7 @@ import {
   type ToolCategory,
 } from '@/stores/tools'
 import { useProfileStore } from '@/stores/profile'
+import { useUpdaterStore } from '@/stores/updater'
 import { cn } from '@/lib/utils'
 
 const CATEGORY_ORDER: ToolCategory[] = [
@@ -34,15 +35,27 @@ export function Sidebar() {
   const grouped = getVisibleToolsByCategory(visibility, order)
   const [info, setInfo] = useState<main.AppInfo | null>(null)
 
+  const updStatus = useUpdaterStore((s) => s.status)
+  const updLatest = useUpdaterStore((s) => s.latestVersion)
+  const check = useUpdaterStore((s) => s.check)
+
   useEffect(() => {
     GetAppInfo().then(setInfo)
+    // 启动时静默查一次更新(不弹加载态,只默默更新徽章颜色)
+    check({ silent: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // TODO: 接入 GitHub release API 后，根据实际更新状态切换颜色
-  const updateStatus: 'latest' | 'available' = 'latest'
-  const isLatest = updateStatus === 'latest'
+  const hasUpdate =
+    updStatus === 'available' ||
+    updStatus === 'downloading' ||
+    updStatus === 'downloaded' ||
+    updStatus === 'download-error'
+  const isLatest = !hasUpdate
   const dotColor = isLatest ? 'bg-emerald-500' : 'bg-amber-500'
-  const pillTitle = isLatest ? '当前已是最新版本' : '有新版本可用，点击查看'
+  const pillTitle = isLatest
+    ? '当前已是最新版本'
+    : `有新版本 v${updLatest ?? ''} 可用,点击查看`
 
   return (
     <aside

@@ -46,6 +46,9 @@ pnpm-debug.log*
 .env.local
 .env.*.local
 
+# 本地 Go 版本切换脚本(开发者个人路径,不共享)
+scripts/use-go125.bat
+
 # Misc
 *.tmp
 *.bak

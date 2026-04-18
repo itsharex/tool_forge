@@ -1,9 +1,24 @@
-import { useEffect, useState } from 'react'
-import { CheckCircle2, ExternalLink, Github, Info, Mail, RefreshCw } from 'lucide-react'
+import { useEffect } from 'react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Download,
+  ExternalLink,
+  FolderOpen,
+  Github,
+  Info,
+  Loader2,
+  Mail,
+  Power,
+  RefreshCw,
+  XCircle,
+} from 'lucide-react'
 import { GetAppInfo } from '../../../wailsjs/go/main/App'
 import type { main } from '../../../wailsjs/go/models'
+import { useState } from 'react'
 import { toolRegistry } from '@/tools/registry'
 import { CATEGORY_LABELS, type ToolCategory } from '@/stores/tools'
+import { useUpdaterStore } from '@/stores/updater'
 import logoUrl from '@/assets/logo.png'
 
 const CATEGORY_ACCENT: Record<ToolCategory, string> = {
@@ -20,13 +35,24 @@ const CATEGORY_ACCENT: Record<ToolCategory, string> = {
 
 const FEEDBACK_EMAIL = 'cherrytump@gmail.com'
 
+function formatSize(bytes: number): string {
+  if (!bytes || bytes <= 0) return '—'
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
+}
+
 export function AboutSection() {
   const [info, setInfo] = useState<main.AppInfo | null>(null)
-  const [checking, setChecking] = useState(false)
-  const [lastChecked, setLastChecked] = useState<Date | null>(null)
+  const upd = useUpdaterStore()
 
   useEffect(() => {
     GetAppInfo().then(setInfo)
+    // 打开 About 时静默刷一次;若已经在下载/刚下载完,就不打扰
+    if (upd.status === 'idle' || upd.status === 'latest' || upd.status === 'available' || upd.status === 'error') {
+      upd.check({ silent: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const categoryCounts = toolRegistry.reduce<Partial<Record<ToolCategory, number>>>((acc, t) => {
@@ -34,18 +60,9 @@ export function AboutSection() {
     return acc
   }, {})
 
-  const checkUpdate = () => {
-    if (checking) return
-    setChecking(true)
-    // TODO: 接入 GitHub release API
-    setTimeout(() => {
-      setChecking(false)
-      setLastChecked(new Date())
-    }, 800)
-  }
-
   return (
     <div className="mx-auto max-w-2xl space-y-5">
+      {/* 头图 */}
       <div className="group flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-6 text-center transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg">
         <div className="relative">
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-500/40 to-fuchsia-500/40 opacity-40 blur-xl transition-opacity duration-500 group-hover:opacity-80" />
@@ -83,6 +100,7 @@ export function AboutSection() {
         </div>
       </div>
 
+      {/* 工具总览 */}
       <div className="rounded-lg border border-border bg-card">
         <div className="flex items-center gap-1.5 border-b border-border px-4 py-2 text-xs font-medium text-muted-foreground">
           <Info className="h-3.5 w-3.5" />
@@ -123,33 +141,161 @@ export function AboutSection() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            <div>
-              <div className="text-sm">当前版本 v{info?.version ?? '…'}</div>
-              <div className="text-xs text-muted-foreground">
-                {lastChecked
-                  ? `上次检查 ${lastChecked.toLocaleTimeString()}`
-                  : '点击检查是否有新版本'}
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={checkUpdate}
-            disabled={checking}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-60"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${checking ? 'animate-spin' : ''}`} />
-            {checking ? '检查中' : '检查更新'}
-          </button>
-        </div>
-      </div>
+      {/* 更新检查 */}
+      <UpdateCard currentVersion={info?.version ?? null} />
 
       <p className="text-center text-xs text-muted-foreground">
         © {new Date().getFullYear()} Tool Forge · MIT · Made with ♥
       </p>
     </div>
+  )
+}
+
+function UpdateCard({ currentVersion }: { currentVersion: string | null }) {
+  const upd = useUpdaterStore()
+  const s = upd.status
+
+  // 顶部图标 + 主描述
+  const iconAndText = (() => {
+    switch (s) {
+      case 'checking':
+        return {
+          icon: <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />,
+          title: '检查中…',
+          sub: '正在连接更新服务器',
+        }
+      case 'latest':
+        return {
+          icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+          title: `当前已是最新版本 v${currentVersion ?? '…'}`,
+          sub: upd.lastCheckedAt
+            ? `上次检查 ${upd.lastCheckedAt.toLocaleTimeString()}`
+            : '',
+        }
+      case 'available':
+        return {
+          icon: <AlertTriangle className="h-4 w-4 text-amber-500" />,
+          title: `发现新版本 v${upd.latestVersion ?? '…'}`,
+          sub: upd.manifest?.size_bytes
+            ? `安装包 ${formatSize(upd.manifest.size_bytes)}`
+            : '',
+        }
+      case 'downloading':
+        return {
+          icon: <Loader2 className="h-4 w-4 animate-spin text-primary" />,
+          title: `下载新版本 v${upd.latestVersion ?? '…'} 中…`,
+          sub: `${formatSize(upd.progressLoaded)} / ${formatSize(upd.progressTotal)}`,
+        }
+      case 'downloaded':
+        return {
+          icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+          title: '新版本已下载',
+          sub: '点击"立即安装并重启"即可切换到新版',
+        }
+      case 'error':
+        return {
+          icon: <XCircle className="h-4 w-4 text-destructive" />,
+          title: '检查更新失败',
+          sub: upd.errorMessage ?? '网络异常,稍后再试',
+        }
+      case 'download-error':
+        return {
+          icon: <XCircle className="h-4 w-4 text-destructive" />,
+          title: '下载失败',
+          sub: upd.errorMessage ?? '请重试',
+        }
+      default:
+        return {
+          icon: <CheckCircle2 className="h-4 w-4 text-muted-foreground" />,
+          title: `当前版本 v${currentVersion ?? '…'}`,
+          sub: '点击检查是否有新版本',
+        }
+    }
+  })()
+
+  return (
+    <div className="rounded-lg border border-border bg-card">
+      <div className="flex items-start gap-2.5 p-4">
+        <div className="mt-0.5">{iconAndText.icon}</div>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm">{iconAndText.title}</div>
+          {iconAndText.sub && (
+            <div className="mt-0.5 text-xs text-muted-foreground">
+              {iconAndText.sub}
+            </div>
+          )}
+          {s === 'downloading' && (
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full bg-primary transition-all duration-150"
+                style={{ width: `${upd.progressPercent}%` }}
+              />
+            </div>
+          )}
+          {upd.manifest?.changelog && (s === 'available' || s === 'downloading' || s === 'downloaded') && (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                查看更新日志
+              </summary>
+              <pre className="mt-1.5 whitespace-pre-wrap rounded border border-border bg-muted/40 p-2 font-sans text-xs text-foreground/80">
+                {upd.manifest.changelog}
+              </pre>
+            </details>
+          )}
+        </div>
+        <UpdateActions />
+      </div>
+    </div>
+  )
+}
+
+function UpdateActions() {
+  const upd = useUpdaterStore()
+  const s = upd.status
+  const baseBtn =
+    'inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-60'
+  const primaryBtn =
+    'inline-flex h-8 items-center gap-1.5 rounded-md bg-primary text-primary-foreground px-3 text-xs font-medium transition-colors hover:bg-primary/90 disabled:opacity-60'
+
+  if (s === 'available') {
+    return (
+      <button onClick={() => upd.download()} className={primaryBtn}>
+        <Download className="h-3.5 w-3.5" />
+        下载更新
+      </button>
+    )
+  }
+  if (s === 'downloading') {
+    return (
+      <button disabled className={baseBtn}>
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        下载中
+      </button>
+    )
+  }
+  if (s === 'downloaded') {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <button onClick={() => upd.installAndRestart()} className={primaryBtn}>
+          <Power className="h-3.5 w-3.5" />
+          立即安装并重启
+        </button>
+        <button onClick={() => upd.openDownloadsFolder()} className={baseBtn}>
+          <FolderOpen className="h-3.5 w-3.5" />
+          打开下载目录
+        </button>
+      </div>
+    )
+  }
+  // idle / checking / latest / error / download-error
+  return (
+    <button
+      onClick={() => upd.check()}
+      disabled={s === 'checking'}
+      className={baseBtn}
+    >
+      <RefreshCw className={`h-3.5 w-3.5 ${s === 'checking' ? 'animate-spin' : ''}`} />
+      {s === 'checking' ? '检查中' : s === 'error' || s === 'download-error' ? '重试' : '检查更新'}
+    </button>
   )
 }

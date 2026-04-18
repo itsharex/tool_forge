@@ -4,7 +4,7 @@
   "outputfilename": "ToolForge",
   "info": {
     "productName": "Tool Forge",
-    "productVersion": "0.1.0"
+    "productVersion": "0.1.3"
   },
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
