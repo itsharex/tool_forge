@@ -6,6 +6,7 @@ import { toolRegistry } from '@/tools/registry'
 export type ToolCategory =
   | 'forensic'
   | 'data'
+  | 'ai'
   | 'codec'
   | 'crypto'
   | 'time'
@@ -28,6 +29,7 @@ export interface ToolMeta {
 export const CATEGORY_LABELS: Record<ToolCategory, string> = {
   forensic: '取证',
   data: '数据处理',
+  ai: 'AI 工具',
   codec: '编解码',
   crypto: '加密哈希',
   time: '时间',

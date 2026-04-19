@@ -24,12 +24,13 @@ import logoUrl from '@/assets/logo.png'
 const CATEGORY_ACCENT: Record<ToolCategory, string> = {
   forensic: 'bg-rose-500',
   data: 'bg-blue-500',
+  ai: 'bg-indigo-500',
   codec: 'bg-violet-500',
   crypto: 'bg-amber-500',
   time: 'bg-sky-500',
   text: 'bg-emerald-500',
   network: 'bg-cyan-500',
-  gen: 'bg-indigo-500',
+  gen: 'bg-fuchsia-500',
   dev: 'bg-slate-500',
 }
 

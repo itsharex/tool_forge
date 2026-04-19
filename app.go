@@ -12,6 +12,7 @@ import (
 
 	"tool_forge/backend/system"
 	"tool_forge/backend/tools/charles"
+	"tool_forge/backend/tools/claudeinsight"
 	"tool_forge/backend/tools/envscan"
 	"tool_forge/backend/tools/forensic"
 	"tool_forge/backend/updater"
@@ -130,6 +131,94 @@ func (a *App) DeletePassword(key string) error {
 // ScanEnvironments 扫描本机开发者工具；未安装的条目不返回。
 func (a *App) ScanEnvironments() envscan.ScanReport {
 	return envscan.Scan(a.ctx)
+}
+
+// ================ Claude Insight ================
+
+// BuildClaudeDashboard 扫描本机 ~/.claude/projects 下的 JSONL 会话，聚合为 Dashboard 指标。
+// claudeDir 可留空（走 $HOME/.claude）；传非空路径时允许用户自定义 .claude 位置。
+func (a *App) BuildClaudeDashboard(claudeDir string) (*claudeinsight.DashboardReport, error) {
+	return claudeinsight.BuildDashboard(claudeDir)
+}
+
+// ListClaudeSessions 列出本机所有 Claude Code 会话（用于会话浏览页）。
+// 返回按结束时间倒序排列。
+func (a *App) ListClaudeSessions(claudeDir string) (*claudeinsight.SessionList, error) {
+	return claudeinsight.ListSessions(claudeDir)
+}
+
+// LoadClaudeSession 读取单个会话的完整消息流（用于会话详情页）。
+func (a *App) LoadClaudeSession(filePath string) (*claudeinsight.SessionDetail, error) {
+	return claudeinsight.LoadSession(filePath)
+}
+
+// SearchClaudeSessions 跨所有会话的全文搜索（大小写无关）。
+func (a *App) SearchClaudeSessions(query string) (*claudeinsight.SearchResult, error) {
+	return claudeinsight.SearchSessions("", query, 0)
+}
+
+// PickClaudeExportPath 弹保存对话框,让用户选 ZIP 保存位置。
+func (a *App) PickClaudeExportPath(defaultFilename string) (string, error) {
+	return system.PickSaveFile(a.ctx, system.PickFileOptions{
+		Title:           "导出会话到 ZIP",
+		Extensions:      []string{".zip"},
+		DisplayName:     "ZIP 压缩包",
+		DefaultFilename: defaultFilename,
+	})
+}
+
+// PickClaudeImportPath 弹打开对话框,让用户选要导入的 ZIP。
+func (a *App) PickClaudeImportPath() (string, error) {
+	return system.PickFile(a.ctx, system.PickFileOptions{
+		Title:       "选择要导入的 ZIP",
+		Extensions:  []string{".zip"},
+		DisplayName: "ZIP 压缩包",
+	})
+}
+
+// ExportClaudeSessions 把选定的会话文件打包成 ZIP。
+func (a *App) ExportClaudeSessions(filePaths []string, destZip string) (*claudeinsight.ExportResult, error) {
+	return claudeinsight.ExportSessions("", filePaths, destZip)
+}
+
+// ImportClaudeSessions 从 ZIP 恢复会话到 ~/.claude/projects/。
+func (a *App) ImportClaudeSessions(zipPath string) (*claudeinsight.ImportResult, error) {
+	return claudeinsight.ImportSessions("", zipPath)
+}
+
+// ListClaudeSkills 列出 ~/.claude/skills 下所有 skill。
+func (a *App) ListClaudeSkills() (*claudeinsight.SkillList, error) {
+	return claudeinsight.ListSkills("")
+}
+
+// ListClaudeSkillFiles 列出某个 skill 目录下的所有文件。
+func (a *App) ListClaudeSkillFiles(skill string) (*claudeinsight.SkillFileList, error) {
+	return claudeinsight.ListSkillFiles("", skill)
+}
+
+// ReadClaudeSkillFile 读取 skill 下一个文件的内容。
+func (a *App) ReadClaudeSkillFile(skill, relPath string) (*claudeinsight.SkillFileContent, error) {
+	return claudeinsight.ReadSkillFile("", skill, relPath)
+}
+
+// WriteClaudeSkillFile 写入 / 覆盖 skill 下一个文件。
+func (a *App) WriteClaudeSkillFile(skill, relPath, content string) error {
+	return claudeinsight.WriteSkillFile("", skill, relPath, content)
+}
+
+// CreateClaudeSkill 新建一个 skill 目录,并写入默认 SKILL.md 模板。
+func (a *App) CreateClaudeSkill(name string) error {
+	return claudeinsight.CreateSkill("", name)
+}
+
+// DeleteClaudeSkill 删除整个 skill 目录。
+func (a *App) DeleteClaudeSkill(name string) error {
+	return claudeinsight.DeleteSkill("", name)
+}
+
+// DeleteClaudeSkillFile 删除 skill 下某个文件或空目录。
+func (a *App) DeleteClaudeSkillFile(skill, relPath string) error {
+	return claudeinsight.DeleteSkillFile("", skill, relPath)
 }
 
 // ================ Updater ================

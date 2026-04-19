@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 const CATEGORY_ORDER: ToolCategory[] = [
   'forensic',
   'data',
+  'ai',
   'codec',
   'crypto',
   'time',

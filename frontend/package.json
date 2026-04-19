@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@codemirror/lang-javascript": "^6.2.5",
     "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-markdown": "^6.5.0",
     "@codemirror/lang-xml": "^6.1.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
@@ -24,11 +26,15 @@
     "clsx": "^2.1.1",
     "crypto-js": "^4.2.0",
     "diff": "^8.0.4",
+    "highlight.js": "^11.11.1",
     "lucide-react": "^0.441.0",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^6.26.2",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1",
     "tailwind-merge": "^2.5.2",
     "zustand": "^4.5.5"
   },

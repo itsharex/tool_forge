@@ -15,10 +15,11 @@ const keyringService = "tool-forge"
 
 // PickFileOptions 文件选择对话框选项
 type PickFileOptions struct {
-	Title       string   `json:"title"`
-	Extensions  []string `json:"extensions"`  // 例如 [".exe"]
-	DisplayName string   `json:"displayName"` // 过滤器显示名，例如 "可执行文件"
-	DefaultPath string   `json:"defaultPath"`
+	Title           string   `json:"title"`
+	Extensions      []string `json:"extensions"`      // 例如 [".exe"]
+	DisplayName     string   `json:"displayName"`     // 过滤器显示名，例如 "可执行文件"
+	DefaultPath     string   `json:"defaultPath"`
+	DefaultFilename string   `json:"defaultFilename"` // 仅保存对话框用
 }
 
 // PickFile 弹出原生文件选择对话框
@@ -46,6 +47,35 @@ func PickFile(ctx context.Context, opts PickFileOptions) (string, error) {
 		Filters:              filters,
 		DefaultDirectory:     opts.DefaultPath,
 		CanCreateDirectories: false,
+	})
+}
+
+// PickSaveFile 弹出原生保存对话框,返回用户选定的目标路径。
+func PickSaveFile(ctx context.Context, opts PickFileOptions) (string, error) {
+	filters := []wailsruntime.FileFilter{}
+	if len(opts.Extensions) > 0 {
+		pattern := ""
+		for i, ext := range opts.Extensions {
+			if i > 0 {
+				pattern += ";"
+			}
+			pattern += "*" + ext
+		}
+		label := opts.DisplayName
+		if label == "" {
+			label = "文件"
+		}
+		filters = append(filters, wailsruntime.FileFilter{
+			DisplayName: fmt.Sprintf("%s (%s)", label, pattern),
+			Pattern:     pattern,
+		})
+	}
+	return wailsruntime.SaveFileDialog(ctx, wailsruntime.SaveDialogOptions{
+		Title:                opts.Title,
+		Filters:              filters,
+		DefaultDirectory:     opts.DefaultPath,
+		DefaultFilename:      opts.DefaultFilename,
+		CanCreateDirectories: true,
 	})
 }
 
