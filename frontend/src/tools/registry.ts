@@ -79,6 +79,18 @@ import { meta as codexInsightMeta } from './codex-insight/meta'
 import AIStupid from './ai-stupid'
 import { meta as aiStupidMeta } from './ai-stupid/meta'
 
+import Regex from './regex'
+import { meta as regexMeta } from './regex/meta'
+
+import Cron from './cron'
+import { meta as cronMeta } from './cron/meta'
+
+import CryptoLab from './crypto-lab'
+import { meta as cryptoLabMeta } from './crypto-lab/meta'
+
+import Protobuf from './protobuf'
+import { meta as protobufMeta } from './protobuf/meta'
+
 export interface ToolEntry {
   meta: ToolMeta
   Component: ComponentType
@@ -104,6 +116,10 @@ export const tools: ToolEntry[] = [
   { meta: qrcodeMeta, Component: QrCodeTool },
   { meta: curlConvertMeta, Component: CurlConvert },
   { meta: textDiffMeta, Component: TextDiff },
+  { meta: regexMeta, Component: Regex },
+  { meta: cronMeta, Component: Cron },
+  { meta: cryptoLabMeta, Component: CryptoLab },
+  { meta: protobufMeta, Component: Protobuf },
   { meta: charlesKeyMeta, Component: CharlesKey },
   { meta: hexEditorMeta, Component: HexEditor },
   { meta: mmkvMeta, Component: Mmkv },

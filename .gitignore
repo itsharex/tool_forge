@@ -52,3 +52,6 @@ scripts/use-go125.bat
 # Misc
 *.tmp
 *.bak
+
+# 开发文档
+docs/
