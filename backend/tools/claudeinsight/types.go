@@ -70,12 +70,18 @@ type SessionDetail struct {
 // SessionListItem 会话列表页的一行数据
 type SessionListItem struct {
 	ID        string `json:"id"`
-	Project   string `json:"project"`     // cwd 原值
-	StartedAt string `json:"started_at"`  // RFC3339
-	EndedAt   string `json:"ended_at"`    // RFC3339
-	Messages  int    `json:"messages"`    // user+assistant 总数
-	Preview   string `json:"preview"`     // 第一条 user 消息截断后的文本
-	FilePath  string `json:"file_path"`   // jsonl 文件绝对路径,详情页按路径再次读取
+	Project   string `json:"project"`    // cwd 原值
+	StartedAt string `json:"started_at"` // RFC3339
+	EndedAt   string `json:"ended_at"`   // RFC3339
+	Messages  int    `json:"messages"`   // user+assistant 总数
+	Preview   string `json:"preview"`    // 第一条 user 消息截断后的文本
+	FilePath  string `json:"file_path"`  // jsonl 文件绝对路径,详情页按路径再次读取
+	// --- Token 用量（跨模型汇总） ---
+	InputTokens         int64 `json:"input_tokens"`
+	OutputTokens        int64 `json:"output_tokens"`
+	CacheCreationTokens int64 `json:"cache_creation_tokens"`
+	CacheReadTokens     int64 `json:"cache_read_tokens"`
+	TotalTokens         int64 `json:"total_tokens"`
 }
 
 // SessionList 会话列表结果

@@ -74,6 +74,12 @@ type SessionListItem struct {
 	FilePath  string `json:"file_path"`
 	Model     string `json:"model"`
 	Cli       string `json:"cli"` // cli_version
+	// --- Token 用量（取自 token_count 事件的 session running total） ---
+	InputTokens     int64 `json:"input_tokens"`
+	OutputTokens    int64 `json:"output_tokens"`
+	CachedTokens    int64 `json:"cached_tokens"`
+	ReasoningTokens int64 `json:"reasoning_tokens"`
+	TotalTokens     int64 `json:"total_tokens"`
 }
 
 // SessionList 会话列表返回

@@ -397,15 +397,20 @@ func ListSessions(codexDir string) (*SessionList, error) {
 	}
 	for _, acc := range accums {
 		out.Items = append(out.Items, SessionListItem{
-			ID:        acc.id,
-			Project:   acc.project,
-			StartedAt: acc.firstTime.UTC().Format(time.RFC3339),
-			EndedAt:   acc.lastTime.UTC().Format(time.RFC3339),
-			Messages:  acc.messages,
-			Preview:   acc.preview,
-			FilePath:  acc.filePath,
-			Model:     acc.lastModel,
-			Cli:       acc.cliVersion,
+			ID:              acc.id,
+			Project:         acc.project,
+			StartedAt:       acc.firstTime.UTC().Format(time.RFC3339),
+			EndedAt:         acc.lastTime.UTC().Format(time.RFC3339),
+			Messages:        acc.messages,
+			Preview:         acc.preview,
+			FilePath:        acc.filePath,
+			Model:           acc.lastModel,
+			Cli:             acc.cliVersion,
+			InputTokens:     acc.tokens.Input,
+			OutputTokens:    acc.tokens.Output,
+			CachedTokens:    acc.tokens.Cached,
+			ReasoningTokens: acc.tokens.Reasoning,
+			TotalTokens:     acc.tokens.Total,
 		})
 	}
 	sort.Slice(out.Items, func(i, j int) bool {

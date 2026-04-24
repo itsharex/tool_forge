@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
+  Coins,
   Download,
   Folder,
   Loader2,
@@ -25,7 +26,7 @@ import {
   PickClaudeImportPath,
 } from '../../../wailsjs/go/main/App'
 import type { claudeinsight } from '../../../wailsjs/go/models'
-import { formatDateTime, formatDuration, formatRelative } from './lib/format'
+import { formatDateTime, formatDuration, formatRelative, formatTokens } from './lib/format'
 import { SessionDetail } from './SessionDetail'
 
 type Item = claudeinsight.SessionListItem
@@ -321,6 +322,21 @@ function SessionRow({
           <span className="min-w-0 flex-1 truncate font-mono text-muted-foreground" title={item.project}>
             {item.project || '—'}
           </span>
+          {item.total_tokens > 0 && (
+            <span
+              className="shrink-0 inline-flex items-center gap-1 rounded bg-indigo-500/10 px-1.5 py-0.5 font-mono text-[11px] text-indigo-600 dark:text-indigo-300"
+              title={
+                `输入　　${item.input_tokens.toLocaleString()}\n` +
+                `输出　　${item.output_tokens.toLocaleString()}\n` +
+                `缓存创建　${item.cache_creation_tokens.toLocaleString()}\n` +
+                `缓存读取　${item.cache_read_tokens.toLocaleString()}\n` +
+                `总计　　${item.total_tokens.toLocaleString()}`
+              }
+            >
+              <Coins className="h-3 w-3" />
+              {formatTokens(item.total_tokens)}
+            </span>
+          )}
           <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 font-mono text-[11px]">
             {item.messages} 条
           </span>

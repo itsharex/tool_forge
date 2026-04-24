@@ -78,14 +78,26 @@ func ListSessions(claudeDir string) (*SessionList, error) {
 		Items:     make([]SessionListItem, 0, len(accums)),
 	}
 	for _, acc := range accums {
+		var inTok, outTok, ccTok, crTok int64
+		for _, mt := range acc.byModel {
+			inTok += mt.InputTokens
+			outTok += mt.OutputTokens
+			ccTok += mt.CacheCreationTokens
+			crTok += mt.CacheReadTokens
+		}
 		out.Items = append(out.Items, SessionListItem{
-			ID:        acc.id,
-			Project:   acc.project,
-			StartedAt: acc.firstTime.UTC().Format(time.RFC3339),
-			EndedAt:   acc.lastTime.UTC().Format(time.RFC3339),
-			Messages:  acc.messages,
-			Preview:   acc.preview,
-			FilePath:  acc.filePath,
+			ID:                  acc.id,
+			Project:             acc.project,
+			StartedAt:           acc.firstTime.UTC().Format(time.RFC3339),
+			EndedAt:             acc.lastTime.UTC().Format(time.RFC3339),
+			Messages:            acc.messages,
+			Preview:             acc.preview,
+			FilePath:            acc.filePath,
+			InputTokens:         inTok,
+			OutputTokens:        outTok,
+			CacheCreationTokens: ccTok,
+			CacheReadTokens:     crTok,
+			TotalTokens:         inTok + outTok + ccTok + crTok,
 		})
 	}
 	// 按结束时间倒序
