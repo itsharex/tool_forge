@@ -128,6 +128,61 @@ func (a *App) ResetHotkey(id string) string {
 	return ""
 }
 
+// ================ Data 管理(供 Profile → 数据 调用) ================
+
+// GetDataStats 返回 ~/.toolforge 的概况
+func (a *App) GetDataStats() *system.DataStats {
+	s, _ := system.CollectDataStats()
+	return s
+}
+
+// OpenDataDir 资源管理器打开 ~/.toolforge
+func (a *App) OpenDataDir() string {
+	if err := system.OpenDataDir(); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
+// ExportData 把数据目录 + 前端传来的 localStorage 一起打 zip,
+// localStorageJSON 是前端 stringify 后的 JSON 字符串。返回保存路径(空 = 用户取消)
+func (a *App) ExportData(localStorageJSON string) (string, string) {
+	path, err := system.ExportData(a.ctx, localStorageJSON)
+	if err != nil {
+		return "", err.Error()
+	}
+	return path, ""
+}
+
+// ImportData 选 zip 并恢复到 ~/.toolforge,返回需要前端写回的 localStorage JSON。
+// 返回 (localStorageJSON, errorMsg);用户取消时两个都为空。
+// 注意:调用前会先停止 clipboard service,导入后需要前端提示用户重启 App。
+func (a *App) ImportData() (string, string) {
+	if a.clipboard != nil {
+		a.clipboard.Stop()
+	}
+	ls, err := system.ImportData(a.ctx)
+	if err != nil {
+		return "", err.Error()
+	}
+	return ls, ""
+}
+
+// ResetAllData 清空整个 ~/.toolforge 目录,前端在调用前应清自家 localStorage,
+// 调用后需要提示用户重启
+func (a *App) ResetAllData() string {
+	if a.clipboard != nil {
+		a.clipboard.Stop()
+	}
+	if a.hotkey != nil {
+		a.hotkey.Stop()
+	}
+	if err := system.ResetAllData(); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
 // GetAppInfo 返回应用与运行环境信息
 func (a *App) GetAppInfo() AppInfo {
 	return AppInfo{
