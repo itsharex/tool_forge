@@ -169,15 +169,17 @@ function StatCard({
   return (
     <div
       className={cn(
-        'rounded-lg border border-border bg-card p-3',
+        'group rounded-lg border border-border bg-card p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-foreground/5',
         wide && 'md:col-span-2'
       )}
     >
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <span className="text-indigo-500">{icon}</span>
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 text-indigo-600 transition-transform duration-200 group-hover:scale-110 dark:text-indigo-300">
+          {icon}
+        </span>
         {label}
       </div>
-      <div className="mt-1 text-xl font-semibold tracking-tight">{value}</div>
+      <div className="mt-1.5 text-xl font-semibold tracking-tight">{value}</div>
     </div>
   )
 }

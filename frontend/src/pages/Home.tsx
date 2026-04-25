@@ -67,13 +67,10 @@ export function Home() {
         <header className="mb-6 flex items-end justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              {styleId === 'nebula' ? (
-                <>
-                  Tool <span className="bg-gradient-to-r from-violet-500 to-fuchsia-500 bg-clip-text text-transparent">Forge</span>
-                </>
-              ) : (
-                'Tool Forge'
-              )}
+              Tool{' '}
+              <span className={cn('bg-clip-text', titleAccent(styleId))}>
+                Forge
+              </span>
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {isManaging
@@ -132,6 +129,20 @@ export function Home() {
   )
 }
 
+function titleAccent(styleId: string): string {
+  switch (styleId) {
+    case 'nebula':
+      return 'bg-gradient-to-r from-violet-500 to-fuchsia-500 text-transparent'
+    case 'ocean':
+      return 'bg-gradient-to-r from-cyan-500 to-sky-500 text-transparent'
+    case 'forest':
+      return 'bg-gradient-to-r from-emerald-500 to-green-500 text-transparent'
+    default:
+      // minimal:不做渐变,直接用 foreground
+      return 'text-foreground'
+  }
+}
+
 function SortableCard({
   tool,
   visible,
@@ -161,7 +172,7 @@ function SortableCard({
     navigate(tool.path)
   }
 
-  const nebula = styleId === 'nebula'
+  const themed = styleId !== 'minimal'
 
   return (
     <div
@@ -171,20 +182,21 @@ function SortableCard({
       {...attributes}
       {...listeners}
       className={cn(
-        'group relative rounded-lg border bg-card p-4 transition-all touch-none',
-        nebula ? 'border-border/60 card-soft' : 'border-border',
-        !managing && 'cursor-pointer hover:border-foreground/20 hover:bg-accent',
-        nebula && !managing && 'hover:-translate-y-0.5 hover:border-border',
+        'group relative rounded-lg border bg-card p-4 transition-all duration-200 touch-none',
+        themed ? 'border-border/60 card-soft' : 'border-border',
+        !managing &&
+          'cursor-pointer hover:-translate-y-0.5 hover:border-foreground/30 hover:shadow-lg hover:shadow-foreground/5',
         managing && 'cursor-grab active:cursor-grabbing',
         !visible && 'opacity-50',
-        isDragging && 'z-10 cursor-grabbing shadow-lg'
+        isDragging && 'z-10 cursor-grabbing shadow-xl'
       )}
     >
       <div className="flex items-center gap-3">
         <div
           className={cn(
-            'flex h-9 w-9 shrink-0 items-center justify-center rounded-md',
-            iconClassForCategory(tool.category, styleId)
+            'flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-transform duration-200',
+            iconClassForCategory(tool.category, styleId),
+            !managing && 'group-hover:scale-110'
           )}
         >
           <Icon className="h-4 w-4" />

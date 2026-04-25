@@ -112,6 +112,180 @@
       0 10px 24px -12px hsl(258 80% 50% / 0.12);
   }
 
+  /* ================== Ocean - Light ================== */
+  :root[data-style='ocean'] {
+    --background: 200 60% 99%;
+    --foreground: 215 40% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 40% 12%;
+
+    --primary: 195 90% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 200 50% 96%;
+    --secondary-foreground: 215 40% 12%;
+
+    --muted: 200 40% 95%;
+    --muted-foreground: 215 15% 45%;
+
+    --accent: 200 50% 94%;
+    --accent-foreground: 215 40% 12%;
+
+    --border: 200 30% 88%;
+    --input: 200 30% 88%;
+    --ring: 195 90% 42%;
+
+    --sidebar: 200 60% 99.5%;
+
+    --radius: 0.5rem;
+
+    --ambient-gradient: radial-gradient(
+        circle at 12% 8%,
+        hsl(195 90% 50% / 0.1) 0%,
+        transparent 45%
+      ),
+      radial-gradient(
+        circle at 88% 88%,
+        hsl(180 80% 45% / 0.08) 0%,
+        transparent 50%
+      );
+    --card-shadow-soft: 0 1px 3px 0 hsl(215 30% 10% / 0.04),
+      0 10px 24px -12px hsl(195 90% 35% / 0.18);
+  }
+
+  /* ================== Ocean - Dark ================== */
+  .dark[data-style='ocean'] {
+    --background: 215 35% 6%;
+    --foreground: 0 0% 98%;
+
+    --card: 215 30% 10%;
+    --card-foreground: 0 0% 98%;
+
+    --primary: 190 90% 60%;
+    --primary-foreground: 215 35% 6%;
+
+    --secondary: 215 25% 15%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 215 25% 15%;
+    --muted-foreground: 215 15% 65%;
+
+    --accent: 215 22% 17%;
+    --accent-foreground: 0 0% 98%;
+
+    --border: 215 22% 18%;
+    --input: 215 22% 18%;
+    --ring: 190 90% 60%;
+
+    --sidebar: 215 30% 8%;
+
+    --ambient-gradient: radial-gradient(
+        circle at 12% 8%,
+        hsl(195 90% 45% / 0.22) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 88% 88%,
+        hsl(175 90% 40% / 0.15) 0%,
+        transparent 55%
+      );
+    --ambient-pattern: radial-gradient(
+        circle,
+        hsl(195 30% 60% / 0.35) 0.6px,
+        transparent 0.6px
+      );
+    --card-shadow-soft: 0 1px 2px 0 hsl(215 50% 2% / 0.6),
+      0 12px 28px -12px hsl(195 80% 25% / 0.55);
+  }
+
+  /* ================== Forest - Light ================== */
+  :root[data-style='forest'] {
+    --background: 130 30% 99%;
+    --foreground: 155 35% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 155 35% 10%;
+
+    --primary: 158 70% 35%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 140 30% 95%;
+    --secondary-foreground: 155 35% 10%;
+
+    --muted: 140 25% 95%;
+    --muted-foreground: 155 12% 42%;
+
+    --accent: 140 30% 93%;
+    --accent-foreground: 155 35% 10%;
+
+    --border: 140 22% 87%;
+    --input: 140 22% 87%;
+    --ring: 158 70% 35%;
+
+    --sidebar: 130 30% 99.5%;
+
+    --radius: 0.5rem;
+
+    --ambient-gradient: radial-gradient(
+        circle at 12% 8%,
+        hsl(158 70% 45% / 0.1) 0%,
+        transparent 45%
+      ),
+      radial-gradient(
+        circle at 88% 88%,
+        hsl(135 60% 50% / 0.08) 0%,
+        transparent 50%
+      );
+    --card-shadow-soft: 0 1px 3px 0 hsl(155 30% 10% / 0.04),
+      0 10px 24px -12px hsl(158 60% 30% / 0.16);
+  }
+
+  /* ================== Forest - Dark ================== */
+  .dark[data-style='forest'] {
+    --background: 160 30% 5%;
+    --foreground: 0 0% 98%;
+
+    --card: 160 22% 9%;
+    --card-foreground: 0 0% 98%;
+
+    --primary: 158 80% 55%;
+    --primary-foreground: 160 30% 5%;
+
+    --secondary: 160 18% 14%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 160 18% 14%;
+    --muted-foreground: 155 12% 62%;
+
+    --accent: 160 16% 17%;
+    --accent-foreground: 0 0% 98%;
+
+    --border: 160 15% 18%;
+    --input: 160 15% 18%;
+    --ring: 158 80% 55%;
+
+    --sidebar: 160 25% 7%;
+
+    --ambient-gradient: radial-gradient(
+        circle at 12% 8%,
+        hsl(158 70% 40% / 0.2) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 88% 88%,
+        hsl(135 70% 35% / 0.15) 0%,
+        transparent 55%
+      );
+    --ambient-pattern: radial-gradient(
+        circle,
+        hsl(158 30% 60% / 0.32) 0.6px,
+        transparent 0.6px
+      );
+    --card-shadow-soft: 0 1px 2px 0 hsl(160 50% 2% / 0.6),
+      0 12px 28px -12px hsl(158 70% 25% / 0.5);
+  }
+
   /* ================== Nebula - Dark ================== */
   .dark[data-style='nebula'] {
     --background: 240 20% 5%;

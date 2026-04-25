@@ -68,6 +68,20 @@ export function BasicSection() {
             title="Nebula"
             description="紫色氛围，星云深空"
           />
+          <StylePreviewCard
+            id="ocean"
+            active={styleId === 'ocean'}
+            onSelect={setStyle}
+            title="Ocean"
+            description="海洋蓝调，沉静专注"
+          />
+          <StylePreviewCard
+            id="forest"
+            active={styleId === 'forest'}
+            onSelect={setStyle}
+            title="Forest"
+            description="苔绿森系，舒缓低疲"
+          />
         </div>
       </Field>
     </div>
@@ -174,6 +188,44 @@ function StylePreview({ styleId }: { styleId: StyleId }) {
           <div className="h-6 w-6 rounded-md bg-rose-500/30 ring-1 ring-rose-400/40" />
           <div className="h-6 w-6 rounded-md bg-emerald-500/30 ring-1 ring-emerald-400/40" />
           <div className="ml-auto h-1.5 w-8 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-400" />
+        </div>
+      </div>
+    )
+  }
+  if (styleId === 'ocean') {
+    return (
+      <div className="relative h-20 overflow-hidden rounded-md bg-[hsl(215_35%_6%)]">
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(circle at 15% 20%, hsl(195 90% 45% / 0.35), transparent 55%), radial-gradient(circle at 85% 80%, hsl(175 80% 40% / 0.22), transparent 55%)',
+          }}
+        />
+        <div className="relative flex h-full items-center gap-2 p-3">
+          <div className="h-6 w-6 rounded-md bg-cyan-500/30 ring-1 ring-cyan-400/40" />
+          <div className="h-6 w-6 rounded-md bg-sky-500/30 ring-1 ring-sky-400/40" />
+          <div className="h-6 w-6 rounded-md bg-teal-500/30 ring-1 ring-teal-400/40" />
+          <div className="ml-auto h-1.5 w-8 rounded-full bg-gradient-to-r from-cyan-400 to-sky-400" />
+        </div>
+      </div>
+    )
+  }
+  if (styleId === 'forest') {
+    return (
+      <div className="relative h-20 overflow-hidden rounded-md bg-[hsl(160_30%_5%)]">
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(circle at 15% 20%, hsl(158 70% 40% / 0.32), transparent 55%), radial-gradient(circle at 85% 80%, hsl(135 70% 35% / 0.22), transparent 55%)',
+          }}
+        />
+        <div className="relative flex h-full items-center gap-2 p-3">
+          <div className="h-6 w-6 rounded-md bg-emerald-500/30 ring-1 ring-emerald-400/40" />
+          <div className="h-6 w-6 rounded-md bg-green-500/30 ring-1 ring-green-400/40" />
+          <div className="h-6 w-6 rounded-md bg-lime-500/30 ring-1 ring-lime-400/40" />
+          <div className="ml-auto h-1.5 w-8 rounded-full bg-gradient-to-r from-emerald-400 to-green-400" />
         </div>
       </div>
     )
