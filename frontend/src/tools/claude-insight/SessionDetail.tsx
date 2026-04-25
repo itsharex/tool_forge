@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
   ArrowLeft,
@@ -42,7 +42,18 @@ export function SessionDetail({ filePath, project, onBack, focusUUID }: Props) {
   const [error, setError] = useState('')
   const [highlightUUID, setHighlightUUID] = useState<string>('')
   const [findOpen, setFindOpen] = useState(false)
+  const [globalReplyOnly, setGlobalReplyOnly] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
+
+  // 整个会话里只要有一条 assistant 消息含 thinking / tool_use,就值得显示全局开关
+  const hasNoise = useMemo(() => {
+    const msgs = detail?.messages ?? []
+    return msgs.some(
+      (m) =>
+        m.role === 'assistant' &&
+        m.blocks.some((b) => b.type === 'thinking' || b.type === 'tool_use')
+    )
+  }, [detail])
 
   // Ctrl+F / Cmd+F 打开页内搜索。Esc 在 FindBar 内关闭。
   useEffect(() => {
@@ -93,7 +104,13 @@ export function SessionDetail({ filePath, project, onBack, focusUUID }: Props) {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-3">
-      <DetailHeader project={project} onBack={onBack} />
+      <DetailHeader
+        project={project}
+        onBack={onBack}
+        showToggle={hasNoise}
+        replyOnly={globalReplyOnly}
+        onToggleReplyOnly={() => setGlobalReplyOnly((v) => !v)}
+      />
       {loading && !detail ? (
         <div className="flex h-40 items-center justify-center gap-3 text-sm text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
@@ -106,7 +123,11 @@ export function SessionDetail({ filePath, project, onBack, focusUUID }: Props) {
         </div>
       ) : detail ? (
         <div ref={bodyRef}>
-          <MessageList messages={detail.messages ?? []} highlightUUID={highlightUUID} />
+          <MessageList
+            messages={detail.messages ?? []}
+            highlightUUID={highlightUUID}
+            globalReplyOnly={globalReplyOnly}
+          />
         </div>
       ) : null}
 
@@ -118,7 +139,19 @@ export function SessionDetail({ filePath, project, onBack, focusUUID }: Props) {
   )
 }
 
-function DetailHeader({ project, onBack }: { project: string; onBack: () => void }) {
+function DetailHeader({
+  project,
+  onBack,
+  showToggle,
+  replyOnly,
+  onToggleReplyOnly,
+}: {
+  project: string
+  onBack: () => void
+  showToggle: boolean
+  replyOnly: boolean
+  onToggleReplyOnly: () => void
+}) {
   return (
     <div className="flex items-center gap-3">
       <Button variant="outline" size="sm" onClick={onBack}>
@@ -131,6 +164,17 @@ function DetailHeader({ project, onBack }: { project: string; onBack: () => void
           {project || '—'}
         </span>
       </div>
+      {showToggle && (
+        <Button
+          variant={replyOnly ? 'default' : 'outline'}
+          size="sm"
+          onClick={onToggleReplyOnly}
+          title={replyOnly ? '显示全部内容(思考 + 工具调用)' : '只看回复,隐藏所有思考 / 工具调用'}
+        >
+          {replyOnly ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+          {replyOnly ? '显示噪音' : '隐藏噪音'}
+        </Button>
+      )}
     </div>
   )
 }
@@ -186,7 +230,15 @@ function groupIntoTurns(messages: Message[]): Turn[] {
   return turns
 }
 
-function MessageList({ messages, highlightUUID }: { messages: Message[]; highlightUUID: string }) {
+function MessageList({
+  messages,
+  highlightUUID,
+  globalReplyOnly,
+}: {
+  messages: Message[]
+  highlightUUID: string
+  globalReplyOnly: boolean
+}) {
   if (messages.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-card px-6 py-12 text-center text-sm text-muted-foreground">
@@ -201,7 +253,12 @@ function MessageList({ messages, highlightUUID }: { messages: Message[]; highlig
         t.kind === 'user' ? (
           <UserCard key={`u-${i}`} message={t.message} highlightUUID={highlightUUID} />
         ) : (
-          <AssistantTurn key={`a-${i}`} turn={t} highlightUUID={highlightUUID} />
+          <AssistantTurn
+            key={`a-${i}`}
+            turn={t}
+            highlightUUID={highlightUUID}
+            globalReplyOnly={globalReplyOnly}
+          />
         )
       )}
     </div>
@@ -235,12 +292,18 @@ function UserCard({ message, highlightUUID }: { message: Message; highlightUUID:
 function AssistantTurn({
   turn,
   highlightUUID,
+  globalReplyOnly,
 }: {
   turn: Extract<Turn, { kind: 'assistant' }>
   highlightUUID: string
+  globalReplyOnly: boolean
 }) {
   // 只看回复:隐藏 thinking / tool_use / image 以外的非文本块,聚焦 Claude 的纯文字回复
-  const [replyOnly, setReplyOnly] = useState(false)
+  const [replyOnly, setReplyOnly] = useState(globalReplyOnly)
+  // 全局开关切换时,把每个回合同步到全局值(用户之后仍可对单个回合再次微调)
+  useEffect(() => {
+    setReplyOnly(globalReplyOnly)
+  }, [globalReplyOnly])
   const turnHighlighted = highlightUUID && turn.messages.some((m) => m.uuid === highlightUUID)
 
   // 是否值得显示 toggle:只有在回合含 thinking 或 tool_use 时才提供
