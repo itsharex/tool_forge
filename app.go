@@ -21,6 +21,7 @@ import (
 	"tool_forge/backend/tools/forensic"
 	"tool_forge/backend/tools/httptest"
 	"tool_forge/backend/tools/netscan"
+	"tool_forge/backend/tools/providerswitch"
 	"tool_forge/backend/updater"
 )
 
@@ -44,6 +45,7 @@ type App struct {
 	clipboard *clipboard.Service
 	hotkey    *system.Manager
 	httptest  *httptest.Service
+	provider  *providerswitch.Service
 }
 
 // NewApp creates a new App application struct
@@ -67,12 +69,14 @@ func NewApp() *App {
 		},
 	}, hkConfig)
 	htt, _ := httptest.New()
+	prov, _ := providerswitch.New()
 	return &App{
 		forensic:  forensic.New(),
 		appsearch: appsearch.New(),
 		clipboard: clip,
 		hotkey:    hkManager,
 		httptest:  htt,
+		provider:  prov,
 	}
 }
 
@@ -205,6 +209,71 @@ func (a *App) ClearHTTPHistory() {
 		return
 	}
 	a.httptest.ClearHistory()
+}
+
+// ================ Provider 切换器(Claude Code / Codex 多 API 配置) ================
+
+// ListProviders 返回所有保存的 Provider(active 排在最前)
+func (a *App) ListProviders() []providerswitch.Provider {
+	if a.provider == nil {
+		return nil
+	}
+	return a.provider.List()
+}
+
+// ListProviderPresets 返回内置预设(Anthropic / GLM / Kimi / OpenAI 等)
+func (a *App) ListProviderPresets() []providerswitch.Preset {
+	if a.provider == nil {
+		return nil
+	}
+	return a.provider.ListPresets()
+}
+
+// SaveProvider 新增或更新一条;id 为空 → 新增,否则更新
+func (a *App) SaveProvider(p providerswitch.Provider) (providerswitch.Provider, string) {
+	if a.provider == nil {
+		return providerswitch.Provider{}, "Provider 服务未初始化"
+	}
+	saved, err := a.provider.Save(p)
+	if err != nil {
+		return providerswitch.Provider{}, err.Error()
+	}
+	return saved, ""
+}
+
+// DeleteProvider 删除一条 Provider
+func (a *App) DeleteProvider(id string) string {
+	if a.provider == nil {
+		return "Provider 服务未初始化"
+	}
+	if err := a.provider.Delete(id); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
+// ActivateProvider 把指定 Provider 写入 ~/.claude/settings.json 或 ~/.codex/config.toml
+func (a *App) ActivateProvider(id string) providerswitch.ApplyResult {
+	if a.provider == nil {
+		return providerswitch.ApplyResult{OK: false, Message: "Provider 服务未初始化"}
+	}
+	return a.provider.Activate(id)
+}
+
+// TestProvider 用指定配置发一个 max_tokens=1 的探测请求
+func (a *App) TestProvider(p providerswitch.Provider) providerswitch.TestResult {
+	if a.provider == nil {
+		return providerswitch.TestResult{OK: false, Message: "Provider 服务未初始化"}
+	}
+	return a.provider.Test(p)
+}
+
+// GetActiveProviderConfig 读当前 ~/.claude 或 ~/.codex 实际生效的配置(用于 UI 对比)
+func (a *App) GetActiveProviderConfig(t string) map[string]string {
+	if a.provider == nil {
+		return nil
+	}
+	return a.provider.GetActiveConfig(providerswitch.ProviderType(t))
 }
 
 // ================ 网络工具(SSL / DNS / WHOIS / 端口) ================

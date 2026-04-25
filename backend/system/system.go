@@ -4,11 +4,14 @@ package system
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strings"
 
-	"github.com/zalando/go-keyring"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	
 )
 
 const keyringService = "tool-forge"
@@ -16,8 +19,8 @@ const keyringService = "tool-forge"
 // PickFileOptions 文件选择对话框选项
 type PickFileOptions struct {
 	Title           string   `json:"title"`
-	Extensions      []string `json:"extensions"`      // 例如 [".exe"]
-	DisplayName     string   `json:"displayName"`     // 过滤器显示名，例如 "可执行文件"
+	Extensions      []string `json:"extensions"`  // 例如 [".exe"]
+	DisplayName     string   `json:"displayName"` // 过滤器显示名，例如 "可执行文件"
 	DefaultPath     string   `json:"defaultPath"`
 	DefaultFilename string   `json:"defaultFilename"` // 仅保存对话框用
 }
@@ -88,10 +91,16 @@ func PickDirectory(ctx context.Context, title, defaultPath string) (string, erro
 	})
 }
 
-// OpenInExplorer 调系统文件管理器打开指定路径
+// OpenInExplorer 调系统文件管理器打开指定路径。
+// 支持 ~ 展开为用户主目录。
 func OpenInExplorer(path string) error {
 	if path == "" {
 		return fmt.Errorf("空路径")
+	}
+	if strings.HasPrefix(path, "~") {
+		if home, err := os.UserHomeDir(); err == nil {
+			path = filepath.Join(home, strings.TrimPrefix(path, "~"))
+		}
 	}
 	var cmd *exec.Cmd
 	switch runtime.GOOS {

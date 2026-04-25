@@ -79,6 +79,9 @@ import { meta as codexInsightMeta } from './codex-insight/meta'
 import AIStupid from './ai-stupid'
 import { meta as aiStupidMeta } from './ai-stupid/meta'
 
+import ProviderSwitch from './provider-switch'
+import { meta as providerSwitchMeta } from './provider-switch/meta'
+
 import Regex from './regex'
 import { meta as regexMeta } from './regex/meta'
 
@@ -137,6 +140,7 @@ export const tools: ToolEntry[] = [
   { meta: claudeInsightMeta, Component: ClaudeInsight },
   { meta: codexInsightMeta, Component: CodexInsight },
   { meta: aiStupidMeta, Component: AIStupid },
+  { meta: providerSwitchMeta, Component: ProviderSwitch },
   { meta: httpTestMeta, Component: HttpTest },
   { meta: netToolsMeta, Component: NetTools },
 ]
