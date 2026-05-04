@@ -129,6 +129,55 @@ func (s *Service) SendChat(ctx context.Context, convID, userContent string) (*Co
 	return c, nil
 }
 
+// RegenerateLast 重新生成最后一条 assistant 消息:
+//   1. 取消可能进行中的流
+//   2. 把最后一条 assistant 消息的内容/思考清空(沿用同一 ID,前端能原地刷新)
+//   3. 重新启动 runStream,流的产物写回这条 assistant
+// 要求最后一条是 assistant 且前一条是 user
+func (s *Service) RegenerateLast(ctx context.Context, convID string) (*Conversation, error) {
+	c, err := loadConversation(convID)
+	if err != nil {
+		return nil, err
+	}
+	if len(c.Messages) < 2 {
+		return nil, fmt.Errorf("没有可重新生成的消息")
+	}
+	last := &c.Messages[len(c.Messages)-1]
+	if last.Role != "assistant" {
+		return nil, fmt.Errorf("最后一条不是助手消息")
+	}
+	prev := c.Messages[len(c.Messages)-2]
+	if prev.Role != "user" {
+		return nil, fmt.Errorf("找不到对应的用户消息")
+	}
+	prov, err := s.providerSnapshot(c.ProviderID)
+	if err != nil {
+		return nil, err
+	}
+	if !prov.Enabled {
+		return nil, fmt.Errorf("供应商 %s 未启用", prov.Name)
+	}
+	if c.ModelID == "" {
+		return nil, fmt.Errorf("会话未指定模型")
+	}
+
+	s.cancelStream(convID)
+
+	now := time.Now().UnixMilli()
+	last.Content = ""
+	last.Thinking = ""
+	last.Model = c.ModelID
+	last.CreatedAt = now
+	c.UpdatedAt = now
+	if err := saveConversation(c); err != nil {
+		return nil, err
+	}
+
+	convCopy := *c
+	go s.runStream(ctx, prov, convCopy, last.ID, prev.Content)
+	return c, nil
+}
+
 func (s *Service) providerSnapshot(id string) (Provider, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

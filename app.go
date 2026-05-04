@@ -934,6 +934,20 @@ func (a *App) SendAIChat(convID, userContent string) (aichat.Conversation, strin
 	return *c, ""
 }
 
+// RegenerateAILastChat 重新生成最后一条助手回复
+//
+//	要求会话最后一条是 assistant、前一条是 user;复用同一 message ID,前端原地刷新
+func (a *App) RegenerateAILastChat(convID string) (aichat.Conversation, string) {
+	if a.aichat == nil {
+		return aichat.Conversation{}, "AI 服务未初始化"
+	}
+	c, err := a.aichat.RegenerateLast(a.ctx, convID)
+	if err != nil {
+		return aichat.Conversation{}, err.Error()
+	}
+	return *c, ""
+}
+
 // StopAIChat 取消正在进行的流;若该会话没有正在进行的流则返回错误
 func (a *App) StopAIChat(convID string) string {
 	if a.aichat == nil {

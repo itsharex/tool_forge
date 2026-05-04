@@ -9,10 +9,12 @@ import {
   Sparkles,
   ChevronDown,
   Brain,
+  RotateCcw,
 } from 'lucide-react'
 import {
   GetAIConversation,
   ListAIProviders,
+  RegenerateAILastChat,
   SendAIChat,
   StopAIChat,
   UpdateAIConversationModel,
@@ -221,6 +223,28 @@ export function ChatPane({ conversationId, onTitleChange }: Props) {
     await StopAIChat(conv.id)
   }
 
+  const onRegenerate = async () => {
+    if (!conv || streaming) return
+    setStreaming(true)
+    // 乐观更新:把最后一条 assistant 的 content / thinking 清空,前端立刻进入"思考中"
+    setConv((prev) => {
+      if (!prev) return prev
+      const msgs = [...prev.messages]
+      const last = msgs[msgs.length - 1]
+      if (last?.role === 'assistant') {
+        msgs[msgs.length - 1] = { ...last, content: '', thinking: '', model: prev.modelId }
+      }
+      return { ...prev, messages: msgs }
+    })
+    const r = (await RegenerateAILastChat(conv.id)) as any
+    const err = pickSecond(r)
+    if (err) {
+      setStreaming(false)
+      await dialog({ title: '重新生成失败', message: err, confirmLabel: '知道了' })
+      void load()
+    }
+  }
+
   const onPickModel = async (providerId: string, modelId: string) => {
     if (!conv) return
     setPickerOpen(false)
@@ -263,14 +287,21 @@ export function ChatPane({ conversationId, onTitleChange }: Props) {
           />
         ) : (
           <ul className="mx-auto max-w-3xl space-y-6 px-4 py-6">
-            {visibleMessages.map((m) => (
-              <MessageItem
-                key={m.id}
-                message={m}
-                fallbackModel={conv.modelId}
-                streaming={streaming && m === lastVisible && m.role === 'assistant'}
-              />
-            ))}
+            {visibleMessages.map((m) => {
+              const isLast = m === lastVisible
+              const isAssistant = m.role === 'assistant'
+              return (
+                <MessageItem
+                  key={m.id}
+                  message={m}
+                  fallbackModel={conv.modelId}
+                  streaming={streaming && isLast && isAssistant}
+                  onRegenerate={
+                    isLast && isAssistant && !streaming ? onRegenerate : undefined
+                  }
+                />
+              )
+            })}
           </ul>
         )}
       </div>
@@ -389,10 +420,12 @@ function MessageItem({
   message,
   fallbackModel,
   streaming,
+  onRegenerate,
 }: {
   message: Message
   fallbackModel: string
   streaming?: boolean
+  onRegenerate?: () => void
 }) {
   const [copied, setCopied] = useState(false)
   const isUser = message.role === 'user'
@@ -440,7 +473,7 @@ function MessageItem({
           ) : null}
         </div>
         {message.content && !streaming && (
-          <div className="opacity-0 transition-opacity group-hover/msg:opacity-100">
+          <div className="flex items-center gap-3 opacity-0 transition-opacity group-hover/msg:opacity-100">
             <button
               type="button"
               onClick={onCopy}
@@ -458,6 +491,17 @@ function MessageItem({
                 </>
               )}
             </button>
+            {onRegenerate && (
+              <button
+                type="button"
+                onClick={onRegenerate}
+                className="flex items-center gap-1 rounded text-[11px] text-muted-foreground hover:text-foreground"
+                title="重新生成"
+              >
+                <RotateCcw className="h-3 w-3" />
+                重新生成
+              </button>
+            )}
           </div>
         )}
       </div>
