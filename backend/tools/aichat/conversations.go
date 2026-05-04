@@ -54,25 +54,87 @@ func (s *Service) GetConversation(id string) (*Conversation, error) {
 	return loadConversation(id)
 }
 
-// CreateConversation 新建会话;providerID / modelID 给定后续聊天使用的默认模型
-func (s *Service) CreateConversation(providerID, modelID, title string) (*Conversation, error) {
+// CreateConversation 新建会话;providerID / modelID 给定后续聊天使用的默认模型;
+// system 系统提示词(可空);contextCount 上下文条数(0 = 不限)
+func (s *Service) CreateConversation(providerID, modelID, title, system string, contextCount int) (*Conversation, error) {
 	if title == "" {
 		title = "新对话"
 	}
+	if contextCount < 0 {
+		contextCount = 0
+	}
 	now := time.Now().UnixMilli()
 	c := &Conversation{
-		ID:         uuid.NewString(),
-		Title:      title,
-		ProviderID: providerID,
-		ModelID:    modelID,
-		Messages:   []Message{},
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		ID:           uuid.NewString(),
+		Title:        title,
+		ProviderID:   providerID,
+		ModelID:      modelID,
+		System:       system,
+		ContextCount: contextCount,
+		Messages:     []Message{},
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 	if err := saveConversation(c); err != nil {
 		return nil, err
 	}
 	return c, nil
+}
+
+// UpdateConversationContext 更新会话的上下文条数(0 = 不限)
+func (s *Service) UpdateConversationContext(id string, count int) error {
+	c, err := loadConversation(id)
+	if err != nil {
+		return err
+	}
+	if count < 0 {
+		count = 0
+	}
+	c.ContextCount = count
+	c.UpdatedAt = time.Now().UnixMilli()
+	return saveConversation(c)
+}
+
+// InsertClearMarker 在会话末尾插入一条"清除上下文"分隔标记;
+// 后续请求只发分隔标记之后的消息(标记本身从不发给模型)
+func (s *Service) InsertClearMarker(id string) error {
+	c, err := loadConversation(id)
+	if err != nil {
+		return err
+	}
+	if len(c.Messages) == 0 {
+		return nil // 空会话无需分隔
+	}
+	if last := c.Messages[len(c.Messages)-1]; last.Role == RoleClear {
+		return nil // 末尾已经是分隔标记
+	}
+	now := time.Now().UnixMilli()
+	c.Messages = append(c.Messages, Message{
+		ID:        uuid.NewString(),
+		Role:      RoleClear,
+		Content:   "",
+		CreatedAt: now,
+	})
+	c.UpdatedAt = now
+	return saveConversation(c)
+}
+
+// UpdateConversationMeta 更新会话元信息(标题/系统提示词/上下文条数)
+func (s *Service) UpdateConversationMeta(id, title, system string, contextCount int) error {
+	c, err := loadConversation(id)
+	if err != nil {
+		return err
+	}
+	if t := strings.TrimSpace(title); t != "" {
+		c.Title = t
+	}
+	c.System = system
+	if contextCount < 0 {
+		contextCount = 0
+	}
+	c.ContextCount = contextCount
+	c.UpdatedAt = time.Now().UnixMilli()
+	return saveConversation(c)
 }
 
 // UpdateConversationModel 切换会话使用的供应商 / 模型
@@ -83,6 +145,17 @@ func (s *Service) UpdateConversationModel(id, providerID, modelID string) error 
 	}
 	c.ProviderID = providerID
 	c.ModelID = modelID
+	c.UpdatedAt = time.Now().UnixMilli()
+	return saveConversation(c)
+}
+
+// UpdateConversationSystem 更新会话的系统提示词(空字符串=清除)
+func (s *Service) UpdateConversationSystem(id, system string) error {
+	c, err := loadConversation(id)
+	if err != nil {
+		return err
+	}
+	c.System = system
 	c.UpdatedAt = time.Now().UnixMilli()
 	return saveConversation(c)
 }

@@ -301,11 +301,15 @@ func streamOpenAI(ctx context.Context, p Provider, conv Conversation, useRespons
 
 // buildOpenAIResponsesInput Responses API 的 input 字段:用 [{role, content}] 数组
 func buildOpenAIResponsesInput(conv Conversation) []map[string]any {
-	out := make([]map[string]any, 0, len(conv.Messages))
+	msgs := contextMessages(conv)
+	out := make([]map[string]any, 0, len(msgs)+1)
 	if conv.System != "" {
 		out = append(out, map[string]any{"role": "system", "content": conv.System})
 	}
-	for _, m := range conv.Messages {
+	for _, m := range msgs {
+		if m.Role == RoleClear {
+			continue
+		}
 		if m.Role == "assistant" && m.Content == "" {
 			// 流式占位的 assistant 消息别发出去
 			continue
@@ -317,11 +321,15 @@ func buildOpenAIResponsesInput(conv Conversation) []map[string]any {
 
 // buildOpenAIChatMessages 经典 Chat Completions 的 messages 数组
 func buildOpenAIChatMessages(conv Conversation) []map[string]string {
-	out := make([]map[string]string, 0, len(conv.Messages))
+	msgs := contextMessages(conv)
+	out := make([]map[string]string, 0, len(msgs)+1)
 	if conv.System != "" {
 		out = append(out, map[string]string{"role": "system", "content": conv.System})
 	}
-	for _, m := range conv.Messages {
+	for _, m := range msgs {
+		if m.Role == RoleClear {
+			continue
+		}
 		if m.Role == "assistant" && m.Content == "" {
 			continue
 		}

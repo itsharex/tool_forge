@@ -150,9 +150,10 @@ func streamAnthropic(ctx context.Context, p Provider, conv Conversation, cb stre
 
 // buildAnthropicMessages 只能是 user/assistant 交替,system 走外层字段
 func buildAnthropicMessages(conv Conversation) []map[string]string {
-	out := make([]map[string]string, 0, len(conv.Messages))
-	for _, m := range conv.Messages {
-		if m.Role == "system" {
+	msgs := contextMessages(conv)
+	out := make([]map[string]string, 0, len(msgs))
+	for _, m := range msgs {
+		if m.Role == "system" || m.Role == RoleClear {
 			continue
 		}
 		if m.Role == "assistant" && m.Content == "" {

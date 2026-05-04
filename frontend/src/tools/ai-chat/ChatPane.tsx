@@ -11,14 +11,18 @@ import {
   Brain,
   RotateCcw,
   Pencil,
+  Settings2,
+  Eraser,
 } from 'lucide-react'
 import {
   EditAndResendAIChat,
   GetAIConversation,
+  InsertAIClearMarker,
   ListAIProviders,
   RegenerateAILastChat,
   SendAIChat,
   StopAIChat,
+  UpdateAIConversationMeta,
   UpdateAIConversationModel,
 } from '../../../wailsjs/go/main/App'
 import { EventsOn } from '../../../wailsjs/runtime/runtime'
@@ -36,6 +40,7 @@ import { useConfirm } from '@/components/ui/confirm'
 import { MarkdownPreview } from '@/components/tool/MarkdownPreview'
 import { ChatModelPicker } from './ChatModelPicker'
 import { ProviderAvatar } from './ProviderAvatar'
+import { ConversationDialog } from './ConversationDialog'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -57,6 +62,7 @@ export function ChatPane({ conversationId, onTitleChange }: Props) {
   const [draft, setDraft] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [systemOpen, setSystemOpen] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -277,6 +283,43 @@ export function ChatPane({ conversationId, onTitleChange }: Props) {
     }
   }
 
+  const onSaveMeta = async (draft: { title: string; system: string; contextCount: number }) => {
+    if (!conv) return
+    const err =
+      ((await UpdateAIConversationMeta(
+        conv.id,
+        draft.title || conv.title,
+        draft.system,
+        draft.contextCount,
+      )) as string) || ''
+    if (err) {
+      await dialog({ title: '保存失败', message: err, confirmLabel: '知道了' })
+      return
+    }
+    setConv((prev) =>
+      prev
+        ? {
+            ...prev,
+            title: draft.title || prev.title,
+            system: draft.system,
+            contextCount: draft.contextCount,
+          }
+        : prev,
+    )
+    setSystemOpen(false)
+    onTitleChange()
+  }
+
+  const onClearContext = async () => {
+    if (!conv || streaming) return
+    const err = ((await InsertAIClearMarker(conv.id)) as string) || ''
+    if (err) {
+      await dialog({ title: '操作失败', message: err, confirmLabel: '知道了' })
+      return
+    }
+    void load()
+  }
+
   const onPickModel = async (providerId: string, modelId: string) => {
     if (!conv) return
     setPickerOpen(false)
@@ -301,6 +344,21 @@ export function ChatPane({ conversationId, onTitleChange }: Props) {
     <div className="relative flex h-full min-w-0 flex-1 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold">{conv.title}</h3>
+        <button
+          type="button"
+          onClick={() => setSystemOpen(true)}
+          className={cn(
+            'flex h-7 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors',
+            conv.system
+              ? 'border-info/40 bg-info/10 text-info'
+              : 'border-border text-muted-foreground hover:bg-secondary hover:text-foreground',
+          )}
+          title="编辑会话(标题/系统提示/上下文)"
+        >
+          <Settings2 className="h-3.5 w-3.5" />
+          会话设置
+          {conv.system && <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-info" />}
+        </button>
       </header>
 
       <div
@@ -320,6 +378,9 @@ export function ChatPane({ conversationId, onTitleChange }: Props) {
         ) : (
           <ul className="mx-auto max-w-3xl space-y-6 px-4 py-6">
             {visibleMessages.map((m) => {
+              if (m.role === 'clear') {
+                return <ClearDivider key={m.id} />
+              }
               const isLast = m === lastVisible
               const isAssistant = m.role === 'assistant'
               return (
@@ -357,6 +418,19 @@ export function ChatPane({ conversationId, onTitleChange }: Props) {
 
       <footer className="shrink-0 border-t border-border bg-card">
         <div className="mx-auto max-w-3xl p-3">
+          {!isEmpty && !streaming && (
+            <div className="mb-2 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => void onClearContext()}
+                className="flex h-6 items-center gap-1 rounded-md border border-border bg-card px-2 text-[11px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                title="插入分隔线,后续问答不再带上之前的上下文"
+              >
+                <Eraser className="h-3 w-3" />
+                清除上下文
+              </button>
+            </div>
+          )}
           <div className="rounded-xl border border-input bg-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
             <textarea
               ref={textareaRef}
@@ -413,6 +487,19 @@ export function ChatPane({ conversationId, onTitleChange }: Props) {
           onPick={(pid, mid) => void onPickModel(pid, mid)}
         />
       )}
+
+      {systemOpen && (
+        <ConversationDialog
+          mode="edit"
+          initial={{
+            title: conv.title,
+            system: conv.system ?? '',
+            contextCount: conv.contextCount ?? 0,
+          }}
+          onClose={() => setSystemOpen(false)}
+          onSave={(d) => void onSaveMeta(d)}
+        />
+      )}
     </div>
   )
 }
@@ -450,6 +537,17 @@ function WelcomeScreen({
         ))}
       </div>
     </div>
+  )
+}
+
+function ClearDivider() {
+  return (
+    <li className="flex items-center gap-3 py-1 text-[11px] text-muted-foreground">
+      <div className="h-px flex-1 bg-border" />
+      <Eraser className="h-3 w-3" />
+      <span>上下文已清除 · 之后的问答不再带上之前的对话</span>
+      <div className="h-px flex-1 bg-border" />
+    </li>
   )
 }
 

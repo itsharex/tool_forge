@@ -146,9 +146,10 @@ func streamGemini(ctx context.Context, p Provider, conv Conversation, cb streamC
 
 // buildGeminiContents Gemini 用 user/model 角色,system 走单独字段
 func buildGeminiContents(conv Conversation) []map[string]any {
-	out := make([]map[string]any, 0, len(conv.Messages))
-	for _, m := range conv.Messages {
-		if m.Role == "system" {
+	msgs := contextMessages(conv)
+	out := make([]map[string]any, 0, len(msgs))
+	for _, m := range msgs {
+		if m.Role == "system" || m.Role == RoleClear {
 			continue
 		}
 		if m.Role == "assistant" && m.Content == "" {

@@ -62,10 +62,19 @@ type TestResult struct {
 	Message    string `json:"message,omitempty"`
 }
 
+// 角色名常量;新加的 "clear" 是前端插入的"清除上下文"分隔标记,
+// 不会发给模型 — 构造 prompt 时只取最后一个 clear 之后的消息
+const (
+	RoleUser      = "user"
+	RoleAssistant = "assistant"
+	RoleSystem    = "system"
+	RoleClear     = "clear"
+)
+
 // Message 对话里的一条消息
 type Message struct {
 	ID      string `json:"id"`
-	Role    string `json:"role"` // user / assistant / system
+	Role    string `json:"role"` // user / assistant / system / clear
 	Content string `json:"content"`
 	// Thinking 模型的"思考"内容(deepseek-r1 / o1 / o3 / claude extended thinking)
 	Thinking string `json:"thinking,omitempty"`
@@ -81,9 +90,11 @@ type Conversation struct {
 	ProviderID string    `json:"providerId"` // 当前对话用的供应商
 	ModelID    string    `json:"modelId"`    // 当前对话用的模型
 	System     string    `json:"system,omitempty"`
-	Messages   []Message `json:"messages"`
-	CreatedAt  int64     `json:"createdAt"`
-	UpdatedAt  int64     `json:"updatedAt"`
+	// ContextCount 发给模型时保留的最近 user/assistant 消息条数;0 = 不限
+	ContextCount int       `json:"contextCount,omitempty"`
+	Messages     []Message `json:"messages"`
+	CreatedAt    int64     `json:"createdAt"`
+	UpdatedAt    int64     `json:"updatedAt"`
 }
 
 // ConversationSummary 列表展示用,不含 messages

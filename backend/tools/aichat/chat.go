@@ -2,6 +2,7 @@ package aichat
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -285,6 +286,15 @@ func (s *Service) runStream(parent context.Context, prov Provider, conv Conversa
 			}
 		},
 		onError: func(err error) {
+			// 用户主动取消(StopAIChat):保留已收到的内容并加截断标记,
+			// 不弹错误对话框 — 改走 done 通道
+			if ctx.Err() != nil || isCanceledErr(err) {
+				s.persistAssistant(conv.ID, asstMsgID, bText.String(), bThink.String(), true)
+				if s.ctx != nil {
+					wailsruntime.EventsEmit(s.ctx, EventDonePrefix+conv.ID, bText.String())
+				}
+				return
+			}
 			s.persistAssistant(conv.ID, asstMsgID, bText.String(), bThink.String(), true)
 			if s.ctx != nil {
 				wailsruntime.EventsEmit(s.ctx, EventErrorPrefix+conv.ID, err.Error())
@@ -328,4 +338,39 @@ func (s *Service) persistAssistant(convID, msgID, content, thinking string, trun
 // SetWailsContext 让 Service 持有 wails ctx 用于 EventsEmit
 func (s *Service) SetWailsContext(ctx context.Context) {
 	s.ctx = ctx
+}
+
+// isCanceledErr 判断 err 是不是"用户主动取消"造成的(context.Canceled / "已取消" / 包装文本)。
+// 各协议 stream 函数在 ctx 被取消时,可能通过 scanner.Err() 间接产出 context canceled,
+// 也可能自己显式构造 fmt.Errorf("已取消"),都视为同一种情况。
+func isCanceledErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) {
+		return true
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "context canceled") || strings.Contains(msg, "已取消")
+}
+
+// contextMessages 计算"参与本次请求"的消息切片:
+//   1. 跳过最后一个 role=clear 之前的所有消息(分隔线后才是当前会话上下文)
+//   2. 再按 conv.ContextCount 限制最近 N 条 user/assistant
+//   3. clear 标记本身从不发给模型,各 build 函数也会显式跳过
+//
+// system 消息独立处理(各协议 build 函数把 conv.System 放到顶层),不算 contextCount
+func contextMessages(conv Conversation) []Message {
+	msgs := conv.Messages
+	for i := len(msgs) - 1; i >= 0; i-- {
+		if msgs[i].Role == RoleClear {
+			msgs = msgs[i+1:]
+			break
+		}
+	}
+	n := conv.ContextCount
+	if n <= 0 || len(msgs) <= n {
+		return msgs
+	}
+	return msgs[len(msgs)-n:]
 }

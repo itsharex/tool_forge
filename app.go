@@ -874,16 +874,50 @@ func (a *App) GetAIConversation(id string) (aichat.Conversation, string) {
 	return *c, ""
 }
 
-// CreateAIConversation 新建会话;providerID + modelID 决定本会话使用的模型
-func (a *App) CreateAIConversation(providerID, modelID, title string) (aichat.Conversation, string) {
+// CreateAIConversation 新建会话;providerID + modelID 决定本会话使用的模型;
+// system 系统提示词(可空);contextCount 上下文条数(0 = 不限)
+func (a *App) CreateAIConversation(providerID, modelID, title, system string, contextCount int) (aichat.Conversation, string) {
 	if a.aichat == nil {
 		return aichat.Conversation{}, "AI 服务未初始化"
 	}
-	c, err := a.aichat.CreateConversation(providerID, modelID, title)
+	c, err := a.aichat.CreateConversation(providerID, modelID, title, system, contextCount)
 	if err != nil {
 		return aichat.Conversation{}, err.Error()
 	}
 	return *c, ""
+}
+
+// UpdateAIConversationMeta 一次性更新会话标题/系统提示/上下文条数
+func (a *App) UpdateAIConversationMeta(id, title, system string, contextCount int) string {
+	if a.aichat == nil {
+		return "AI 服务未初始化"
+	}
+	if err := a.aichat.UpdateConversationMeta(id, title, system, contextCount); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
+// UpdateAIConversationContext 更新上下文条数(0 = 不限)
+func (a *App) UpdateAIConversationContext(id string, count int) string {
+	if a.aichat == nil {
+		return "AI 服务未初始化"
+	}
+	if err := a.aichat.UpdateConversationContext(id, count); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
+// InsertAIClearMarker 在会话末尾插入"清除上下文"分隔标记
+func (a *App) InsertAIClearMarker(id string) string {
+	if a.aichat == nil {
+		return "AI 服务未初始化"
+	}
+	if err := a.aichat.InsertClearMarker(id); err != nil {
+		return err.Error()
+	}
+	return ""
 }
 
 // UpdateAIConversationModel 切换会话的供应商 / 模型
@@ -932,6 +966,17 @@ func (a *App) SendAIChat(convID, userContent string) (aichat.Conversation, strin
 		return aichat.Conversation{}, err.Error()
 	}
 	return *c, ""
+}
+
+// UpdateAIConversationSystem 更新会话的系统提示词(空字符串=清除)
+func (a *App) UpdateAIConversationSystem(id, system string) string {
+	if a.aichat == nil {
+		return "AI 服务未初始化"
+	}
+	if err := a.aichat.UpdateConversationSystem(id, system); err != nil {
+		return err.Error()
+	}
+	return ""
 }
 
 // EditAndResendAIChat 编辑某条 user 消息并重新发起流(截断该消息之后的所有内容)

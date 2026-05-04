@@ -43,7 +43,8 @@ export interface AIConfig {
 
 export interface Message {
   id: string
-  role: 'user' | 'assistant' | 'system'
+  /** 'clear' 是前端"清除上下文"分隔标记,只用于渲染,不发给模型 */
+  role: 'user' | 'assistant' | 'system' | 'clear'
   content: string
   /** 模型的「思考」内容(deepseek-r1 / o1 / claude extended) */
   thinking?: string
@@ -58,6 +59,8 @@ export interface Conversation {
   providerId: string
   modelId: string
   system?: string
+  /** 发给模型时保留的最近 user/assistant 消息条数;0/缺省 = 不限 */
+  contextCount?: number
   messages: Message[]
   createdAt: number
   updatedAt: number

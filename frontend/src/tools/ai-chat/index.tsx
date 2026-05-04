@@ -6,17 +6,20 @@ import {
   ListAIConversations,
   CreateAIConversation,
   DeleteAIConversation,
-  RenameAIConversation,
+  GetAIConversation,
   GetAIConfig,
+  UpdateAIConversationMeta,
 } from '../../../wailsjs/go/main/App'
 import type {
   AIConfig,
+  Conversation,
   ConversationSummary,
   Provider,
 } from './types'
 import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/components/ui/confirm'
 import { ConversationList } from './ConversationList'
+import { ConversationDialog, type ConversationDraft } from './ConversationDialog'
 import { ChatPane } from './ChatPane'
 
 export default function AIChat() {
@@ -29,6 +32,11 @@ export default function AIChat() {
     defaultProviderId: '',
     defaultModelId: '',
   })
+  const [dialogState, setDialogState] = useState<
+    | { mode: 'create'; initial: ConversationDraft }
+    | { mode: 'edit'; convId: string; initial: ConversationDraft }
+    | null
+  >(null)
 
   const reloadAll = async () => {
     const [provList, convList, cfg] = await Promise.all([
@@ -58,38 +66,87 @@ export default function AIChat() {
 
   const goConfig = () => navigate('/profile', { state: { section: 'ai' } })
 
-  const onNewConversation = async () => {
+  const onNewConversation = () => {
     if (usable.length === 0) {
-      await dialog({
+      void dialog({
         title: '没有可用模型',
         message: '请先到「个人中心 → AI 配置」启用至少一个供应商并选择模型',
         confirmLabel: '去配置',
-      })
-      goConfig()
+      }).then(() => goConfig())
       return
     }
-    // 用默认模型;若默认不在可用列表里,退到第一个可用 provider 的第一个模型
-    let providerId = defaults.defaultProviderId
-    let modelId = defaults.defaultModelId
-    const def = usable.find((p) => p.id === providerId)
-    if (!def || !def.models.includes(modelId)) {
-      providerId = usable[0].id
-      modelId = usable[0].models[0]
-    }
-    const r = (await CreateAIConversation(providerId, modelId, '新对话')) as any
-    // Wails 多返回:可能是 [Conv, ""] / {0,1} / 直接 Conv 对象
-    const created =
+    setDialogState({
+      mode: 'create',
+      initial: { title: '', system: '', contextCount: 10 },
+    })
+  }
+
+  const onEditConversation = async (id: string) => {
+    const r = (await GetAIConversation(id)) as any
+    const conv =
       (Array.isArray(r) ? r[0] : r?.['0'] ?? (r && 'id' in r ? r : null)) as
-        | ConversationSummary
+        | Conversation
         | null
-    const err =
-      (Array.isArray(r) ? r[1] : r?.['1']) as string | undefined
-    if (err) {
-      await dialog({ title: '创建失败', message: err, confirmLabel: '知道了' })
+    const err = (Array.isArray(r) ? r[1] : r?.['1']) as string | undefined
+    if (err || !conv) {
+      await dialog({ title: '加载失败', message: err ?? '未知错误', confirmLabel: '知道了' })
       return
     }
-    await reloadAll()
-    if (created?.id) setActiveId(created.id)
+    setDialogState({
+      mode: 'edit',
+      convId: id,
+      initial: {
+        title: conv.title,
+        system: conv.system ?? '',
+        contextCount: conv.contextCount ?? 0,
+      },
+    })
+  }
+
+  const onDialogSave = async (draft: ConversationDraft) => {
+    if (!dialogState) return
+    if (dialogState.mode === 'create') {
+      let providerId = defaults.defaultProviderId
+      let modelId = defaults.defaultModelId
+      const def = usable.find((p) => p.id === providerId)
+      if (!def || !def.models.includes(modelId)) {
+        providerId = usable[0].id
+        modelId = usable[0].models[0]
+      }
+      const r = (await CreateAIConversation(
+        providerId,
+        modelId,
+        draft.title,
+        draft.system,
+        draft.contextCount,
+      )) as any
+      const created =
+        (Array.isArray(r) ? r[0] : r?.['0'] ?? (r && 'id' in r ? r : null)) as
+          | Conversation
+          | null
+      const err = (Array.isArray(r) ? r[1] : r?.['1']) as string | undefined
+      if (err) {
+        await dialog({ title: '创建失败', message: err, confirmLabel: '知道了' })
+        return
+      }
+      setDialogState(null)
+      await reloadAll()
+      if (created?.id) setActiveId(created.id)
+    } else {
+      const err =
+        ((await UpdateAIConversationMeta(
+          dialogState.convId,
+          draft.title || '新对话',
+          draft.system,
+          draft.contextCount,
+        )) as string) || ''
+      if (err) {
+        await dialog({ title: '保存失败', message: err, confirmLabel: '知道了' })
+        return
+      }
+      setDialogState(null)
+      await reloadAll()
+    }
   }
 
   const onDelete = async (id: string) => {
@@ -99,15 +156,6 @@ export default function AIChat() {
       return
     }
     if (activeId === id) setActiveId('')
-    await reloadAll()
-  }
-
-  const onRename = async (id: string, title: string) => {
-    const err = (await RenameAIConversation(id, title)) as unknown as string
-    if (err) {
-      await dialog({ title: '重命名失败', message: err, confirmLabel: '知道了' })
-      return
-    }
     await reloadAll()
   }
 
@@ -154,7 +202,7 @@ export default function AIChat() {
             onSelect={setActiveId}
             onNew={onNewConversation}
             onDelete={onDelete}
-            onRename={onRename}
+            onEdit={(id) => void onEditConversation(id)}
           />
           {activeId ? (
             <ChatPane
@@ -168,6 +216,15 @@ export default function AIChat() {
             </div>
           )}
         </div>
+      )}
+
+      {dialogState && (
+        <ConversationDialog
+          mode={dialogState.mode}
+          initial={dialogState.initial}
+          onClose={() => setDialogState(null)}
+          onSave={(d) => void onDialogSave(d)}
+        />
       )}
     </div>
   )
