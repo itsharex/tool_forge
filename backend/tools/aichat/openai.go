@@ -253,6 +253,10 @@ func streamOpenAI(ctx context.Context, p Provider, conv Conversation, useRespons
 
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	// 部分中转/Grok 代理把思考内容嵌在 delta.content 的 <think>...</think> 里;
+	// 用一个状态机把它拆出来路由到 thinking 通道。仅对 chat completions 启用,
+	// /responses 已经按事件类型分开了。
+	var splitter thinkSplitter
 	for scanner.Scan() {
 		select {
 		case <-ctx.Done():
@@ -273,6 +277,13 @@ func streamOpenAI(ctx context.Context, p Provider, conv Conversation, useRespons
 			text, thinking = parseOpenAIResponsesDelta(payload)
 		} else {
 			text, thinking = parseOpenAIChatDelta(payload)
+			if text != "" {
+				var extra string
+				text, extra = splitter.feed(text)
+				if extra != "" {
+					thinking += extra
+				}
+			}
 		}
 		if thinking != "" {
 			cb.onThinking(thinking)
@@ -410,6 +421,76 @@ func isReasoningModel(modelID string) bool {
 		}
 	}
 	return false
+}
+
+// thinkSplitter 增量识别 <think>...</think>,把里面内容路由到 thinking。
+// 标签可能被 chunk 切断(比如一个 chunk 是 "<thi" 下一个是 "nk>"),所以需要
+// 维护跨 chunk 的 pending 缓冲。
+type thinkSplitter struct {
+	inThink bool
+	pending string // 上一次 feed 末尾可能是开闭标签前缀的部分,留到下一次拼接再判断
+}
+
+const (
+	thinkOpenTag  = "<think>"
+	thinkCloseTag = "</think>"
+)
+
+// feed 输入一段文本,返回 (正文, 思考) 增量
+func (s *thinkSplitter) feed(chunk string) (text, thinking string) {
+	var tb, kb strings.Builder
+	input := s.pending + chunk
+	s.pending = ""
+
+	i := 0
+	for i < len(input) {
+		if s.inThink {
+			idx := strings.Index(input[i:], thinkCloseTag)
+			if idx == -1 {
+				rem := input[i:]
+				if k := suffixPrefixOverlap(rem, thinkCloseTag); k > 0 {
+					kb.WriteString(rem[:len(rem)-k])
+					s.pending = rem[len(rem)-k:]
+				} else {
+					kb.WriteString(rem)
+				}
+				break
+			}
+			kb.WriteString(input[i : i+idx])
+			i += idx + len(thinkCloseTag)
+			s.inThink = false
+		} else {
+			idx := strings.Index(input[i:], thinkOpenTag)
+			if idx == -1 {
+				rem := input[i:]
+				if k := suffixPrefixOverlap(rem, thinkOpenTag); k > 0 {
+					tb.WriteString(rem[:len(rem)-k])
+					s.pending = rem[len(rem)-k:]
+				} else {
+					tb.WriteString(rem)
+				}
+				break
+			}
+			tb.WriteString(input[i : i+idx])
+			i += idx + len(thinkOpenTag)
+			s.inThink = true
+		}
+	}
+	return tb.String(), kb.String()
+}
+
+// suffixPrefixOverlap 返回 s 末尾有多大一段是 target 的前缀(用于跨 chunk 缓存部分标签)
+func suffixPrefixOverlap(s, target string) int {
+	max := len(target) - 1
+	if max > len(s) {
+		max = len(s)
+	}
+	for n := max; n > 0; n-- {
+		if strings.HasPrefix(target, s[len(s)-n:]) {
+			return n
+		}
+	}
+	return 0
 }
 
 // prettifyNetErr 把网络/超时错误翻译成中文短句
