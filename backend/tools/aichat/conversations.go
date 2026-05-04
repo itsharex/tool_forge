@@ -175,6 +175,27 @@ func (s *Service) RenameConversation(id, title string) error {
 	return saveConversation(c)
 }
 
+// DeleteMessage 删除会话里的单条消息(任何 role 都可删,含 clear 分隔标记)
+func (s *Service) DeleteMessage(convID, msgID string) error {
+	c, err := loadConversation(convID)
+	if err != nil {
+		return err
+	}
+	idx := -1
+	for i := range c.Messages {
+		if c.Messages[i].ID == msgID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return fmt.Errorf("消息不存在")
+	}
+	c.Messages = append(c.Messages[:idx], c.Messages[idx+1:]...)
+	c.UpdatedAt = time.Now().UnixMilli()
+	return saveConversation(c)
+}
+
 // DeleteConversationByID 删除一条会话(磁盘 + 进行中的流)
 func (s *Service) DeleteConversationByID(id string) error {
 	// 取消可能正在进行的流

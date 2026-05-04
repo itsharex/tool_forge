@@ -13,8 +13,11 @@ import {
   Pencil,
   Settings2,
   Eraser,
+  Trash2,
+  X,
 } from 'lucide-react'
 import {
+  DeleteAIChatMessage,
   EditAndResendAIChat,
   GetAIConversation,
   InsertAIClearMarker,
@@ -310,6 +313,26 @@ export function ChatPane({ conversationId, onTitleChange }: Props) {
     onTitleChange()
   }
 
+  const onDeleteMessage = async (msgId: string) => {
+    if (!conv) return
+    const ok = await dialog({
+      title: '删除消息',
+      message: '确认删除这条消息?该操作不可撤销。',
+      danger: true,
+      confirmLabel: '删除',
+    })
+    if (!ok) return
+    // 乐观删除
+    setConv((prev) =>
+      prev ? { ...prev, messages: prev.messages.filter((m) => m.id !== msgId) } : prev,
+    )
+    const err = ((await DeleteAIChatMessage(conv.id, msgId)) as string) || ''
+    if (err) {
+      await dialog({ title: '删除失败', message: err, confirmLabel: '知道了' })
+      void load() // 失败时回查后端真实状态
+    }
+  }
+
   const onClearContext = async () => {
     if (!conv || streaming) return
     const err = ((await InsertAIClearMarker(conv.id)) as string) || ''
@@ -379,10 +402,16 @@ export function ChatPane({ conversationId, onTitleChange }: Props) {
           <ul className="mx-auto max-w-3xl space-y-6 px-4 py-6">
             {visibleMessages.map((m) => {
               if (m.role === 'clear') {
-                return <ClearDivider key={m.id} />
+                return (
+                  <ClearDivider
+                    key={m.id}
+                    onDelete={!streaming ? () => void onDeleteMessage(m.id) : undefined}
+                  />
+                )
               }
               const isLast = m === lastVisible
               const isAssistant = m.role === 'assistant'
+              const canMutate = !streaming && !(streaming && isLast && isAssistant)
               return (
                 <MessageItem
                   key={m.id}
@@ -397,6 +426,7 @@ export function ChatPane({ conversationId, onTitleChange }: Props) {
                       ? (newContent) => void onEditResend(m.id, newContent)
                       : undefined
                   }
+                  onDelete={canMutate ? () => void onDeleteMessage(m.id) : undefined}
                 />
               )
             })}
@@ -540,12 +570,22 @@ function WelcomeScreen({
   )
 }
 
-function ClearDivider() {
+function ClearDivider({ onDelete }: { onDelete?: () => void }) {
   return (
-    <li className="flex items-center gap-3 py-1 text-[11px] text-muted-foreground">
+    <li className="group/clear flex items-center gap-3 py-1 text-[11px] text-muted-foreground">
       <div className="h-px flex-1 bg-border" />
       <Eraser className="h-3 w-3" />
       <span>上下文已清除 · 之后的问答不再带上之前的对话</span>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          title="移除分隔线"
+          className="hidden h-4 w-4 items-center justify-center rounded text-muted-foreground hover:bg-secondary hover:text-foreground group-hover/clear:flex"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
       <div className="h-px flex-1 bg-border" />
     </li>
   )
@@ -557,12 +597,14 @@ function MessageItem({
   streaming,
   onRegenerate,
   onEditResend,
+  onDelete,
 }: {
   message: Message
   fallbackModel: string
   streaming?: boolean
   onRegenerate?: () => void
   onEditResend?: (newContent: string) => void
+  onDelete?: () => void
 }) {
   const [copied, setCopied] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -710,6 +752,17 @@ function MessageItem({
               >
                 <RotateCcw className="h-3 w-3" />
                 重新生成
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="ml-auto flex items-center gap-1 rounded text-[11px] text-muted-foreground hover:text-destructive"
+                title="删除这条消息"
+              >
+                <Trash2 className="h-3 w-3" />
+                删除
               </button>
             )}
           </div>

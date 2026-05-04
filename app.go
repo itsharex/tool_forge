@@ -979,6 +979,17 @@ func (a *App) UpdateAIConversationSystem(id, system string) string {
 	return ""
 }
 
+// DeleteAIChatMessage 删除会话里的单条消息(user/assistant/clear 均可删)
+func (a *App) DeleteAIChatMessage(convID, msgID string) string {
+	if a.aichat == nil {
+		return "AI 服务未初始化"
+	}
+	if err := a.aichat.DeleteMessage(convID, msgID); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
 // EditAndResendAIChat 编辑某条 user 消息并重新发起流(截断该消息之后的所有内容)
 func (a *App) EditAndResendAIChat(convID, msgID, newContent string) (aichat.Conversation, string) {
 	if a.aichat == nil {
