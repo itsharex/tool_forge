@@ -934,6 +934,18 @@ func (a *App) SendAIChat(convID, userContent string) (aichat.Conversation, strin
 	return *c, ""
 }
 
+// EditAndResendAIChat 编辑某条 user 消息并重新发起流(截断该消息之后的所有内容)
+func (a *App) EditAndResendAIChat(convID, msgID, newContent string) (aichat.Conversation, string) {
+	if a.aichat == nil {
+		return aichat.Conversation{}, "AI 服务未初始化"
+	}
+	c, err := a.aichat.EditAndResend(a.ctx, convID, msgID, newContent)
+	if err != nil {
+		return aichat.Conversation{}, err.Error()
+	}
+	return *c, ""
+}
+
 // RegenerateAILastChat 重新生成最后一条助手回复
 //
 //	要求会话最后一条是 assistant、前一条是 user;复用同一 message ID,前端原地刷新

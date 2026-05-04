@@ -10,8 +10,10 @@ import {
   ChevronDown,
   Brain,
   RotateCcw,
+  Pencil,
 } from 'lucide-react'
 import {
+  EditAndResendAIChat,
   GetAIConversation,
   ListAIProviders,
   RegenerateAILastChat,
@@ -223,6 +225,36 @@ export function ChatPane({ conversationId, onTitleChange }: Props) {
     await StopAIChat(conv.id)
   }
 
+  const onEditResend = async (msgId: string, newContent: string) => {
+    if (!conv || streaming) return
+    setStreaming(true)
+    // 乐观更新:截断该消息之后的所有,改写其内容,并加占位 assistant
+    setConv((prev) => {
+      if (!prev) return prev
+      const idx = prev.messages.findIndex((m) => m.id === msgId)
+      if (idx < 0) return prev
+      const kept = prev.messages.slice(0, idx + 1).map((m) =>
+        m.id === msgId ? { ...m, content: newContent } : m,
+      )
+      const tmpAsst: Message = {
+        id: 'tmp-edit-' + Date.now(),
+        role: 'assistant',
+        content: '',
+        thinking: '',
+        model: prev.modelId,
+        createdAt: Date.now(),
+      }
+      return { ...prev, messages: [...kept, tmpAsst] }
+    })
+    const r = (await EditAndResendAIChat(conv.id, msgId, newContent)) as any
+    const err = pickSecond(r)
+    if (err) {
+      setStreaming(false)
+      await dialog({ title: '重新发送失败', message: err, confirmLabel: '知道了' })
+      void load()
+    }
+  }
+
   const onRegenerate = async () => {
     if (!conv || streaming) return
     setStreaming(true)
@@ -298,6 +330,11 @@ export function ChatPane({ conversationId, onTitleChange }: Props) {
                   streaming={streaming && isLast && isAssistant}
                   onRegenerate={
                     isLast && isAssistant && !streaming ? onRegenerate : undefined
+                  }
+                  onEditResend={
+                    m.role === 'user' && !streaming
+                      ? (newContent) => void onEditResend(m.id, newContent)
+                      : undefined
                   }
                 />
               )
@@ -421,13 +458,17 @@ function MessageItem({
   fallbackModel,
   streaming,
   onRegenerate,
+  onEditResend,
 }: {
   message: Message
   fallbackModel: string
   streaming?: boolean
   onRegenerate?: () => void
+  onEditResend?: (newContent: string) => void
 }) {
   const [copied, setCopied] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(message.content)
   const isUser = message.role === 'user'
   const label = isUser ? '你' : message.model || fallbackModel || '助手'
 
@@ -435,6 +476,25 @@ function MessageItem({
     await navigator.clipboard.writeText(message.content)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
+  }
+
+  const startEdit = () => {
+    setDraft(message.content)
+    setEditing(true)
+  }
+  const cancelEdit = () => {
+    setEditing(false)
+    setDraft(message.content)
+  }
+  const submitEdit = () => {
+    const next = draft.trim()
+    if (!next || !onEditResend) return
+    if (next === message.content.trim()) {
+      setEditing(false)
+      return
+    }
+    onEditResend(next)
+    setEditing(false)
   }
 
   return (
@@ -458,9 +518,50 @@ function MessageItem({
 
         <div className="min-w-0 text-sm leading-relaxed">
           {isUser ? (
-            <div className="whitespace-pre-wrap break-words rounded-lg bg-info/5 px-3 py-2">
-              {message.content}
-            </div>
+            editing ? (
+              <div className="rounded-lg border border-info/50 bg-info/5">
+                <textarea
+                  autoFocus
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                      e.preventDefault()
+                      submitEdit()
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault()
+                      cancelEdit()
+                    }
+                  }}
+                  rows={Math.min(8, Math.max(2, draft.split('\n').length))}
+                  className="block w-full resize-none rounded-t-lg bg-transparent px-3 py-2 text-sm outline-none"
+                />
+                <div className="flex items-center justify-end gap-2 border-t border-info/20 px-2 py-1.5 text-[11px]">
+                  <span className="mr-auto text-muted-foreground">
+                    Ctrl/⌘+Enter 重发 · Esc 取消
+                  </span>
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="rounded-md px-2 py-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitEdit}
+                    disabled={!draft.trim()}
+                    className="rounded-md bg-info px-2.5 py-1 font-medium text-info-foreground transition-colors hover:bg-info/90 disabled:opacity-50"
+                  >
+                    重新发送
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="whitespace-pre-wrap break-words rounded-lg bg-info/5 px-3 py-2">
+                {message.content}
+              </div>
+            )
           ) : message.content ? (
             <div className="rounded-lg border border-border bg-card px-3 py-2">
               <MarkdownPreview value={message.content} className="markdown-preview text-sm" />
@@ -472,7 +573,7 @@ function MessageItem({
             </div>
           ) : null}
         </div>
-        {message.content && !streaming && (
+        {message.content && !streaming && !editing && (
           <div className="flex items-center gap-3 opacity-0 transition-opacity group-hover/msg:opacity-100">
             <button
               type="button"
@@ -491,6 +592,17 @@ function MessageItem({
                 </>
               )}
             </button>
+            {onEditResend && (
+              <button
+                type="button"
+                onClick={startEdit}
+                className="flex items-center gap-1 rounded text-[11px] text-muted-foreground hover:text-foreground"
+                title="编辑并重发"
+              >
+                <Pencil className="h-3 w-3" />
+                编辑
+              </button>
+            )}
             {onRegenerate && (
               <button
                 type="button"

@@ -178,6 +178,66 @@ func (s *Service) RegenerateLast(ctx context.Context, convID string) (*Conversat
 	return c, nil
 }
 
+// EditAndResend 编辑某条 user 消息内容,截断它之后的所有消息,然后重新发起流。
+//
+//	常用场景:用户发完消息后发现写错了,改一下重答
+func (s *Service) EditAndResend(ctx context.Context, convID, msgID, newContent string) (*Conversation, error) {
+	if strings.TrimSpace(newContent) == "" {
+		return nil, fmt.Errorf("消息不能为空")
+	}
+	c, err := loadConversation(convID)
+	if err != nil {
+		return nil, err
+	}
+	idx := -1
+	for i := range c.Messages {
+		if c.Messages[i].ID == msgID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return nil, fmt.Errorf("消息不存在")
+	}
+	if c.Messages[idx].Role != "user" {
+		return nil, fmt.Errorf("只能编辑用户消息")
+	}
+	prov, err := s.providerSnapshot(c.ProviderID)
+	if err != nil {
+		return nil, err
+	}
+	if !prov.Enabled {
+		return nil, fmt.Errorf("供应商 %s 未启用", prov.Name)
+	}
+	if c.ModelID == "" {
+		return nil, fmt.Errorf("会话未指定模型")
+	}
+
+	s.cancelStream(convID)
+
+	now := time.Now().UnixMilli()
+	c.Messages[idx].Content = newContent
+	c.Messages[idx].CreatedAt = now
+	c.Messages = c.Messages[:idx+1] // 截断后续
+
+	asstMsg := Message{
+		ID:        uuid.NewString(),
+		Role:      "assistant",
+		Content:   "",
+		Model:     c.ModelID,
+		CreatedAt: now + 1,
+	}
+	c.Messages = append(c.Messages, asstMsg)
+	c.UpdatedAt = now
+	if err := saveConversation(c); err != nil {
+		return nil, err
+	}
+
+	convCopy := *c
+	go s.runStream(ctx, prov, convCopy, asstMsg.ID, newContent)
+	return c, nil
+}
+
 func (s *Service) providerSnapshot(id string) (Provider, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
