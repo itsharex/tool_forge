@@ -85,6 +85,9 @@ import { meta as providerSwitchMeta } from './provider-switch/meta'
 import AIChat from './ai-chat'
 import { meta as aiChatMeta } from './ai-chat/meta'
 
+import Translate from './translate'
+import { meta as translateMeta } from './translate/meta'
+
 import Regex from './regex'
 import { meta as regexMeta } from './regex/meta'
 
@@ -145,6 +148,7 @@ export const tools: ToolEntry[] = [
   { meta: aiStupidMeta, Component: AIStupid },
   { meta: providerSwitchMeta, Component: ProviderSwitch },
   { meta: aiChatMeta, Component: AIChat },
+  { meta: translateMeta, Component: Translate },
   { meta: httpTestMeta, Component: HttpTest },
   { meta: netToolsMeta, Component: NetTools },
 ]

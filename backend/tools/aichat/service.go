@@ -16,8 +16,9 @@ type Service struct {
 	providers []Provider
 	config    Config
 	loaded    bool
-	ctx       context.Context // wails 启动后注入,用于 EventsEmit
-	streams   streamRegistry  // 进行中的会话流(chat.go)
+	ctx        context.Context // wails 启动后注入,用于 EventsEmit
+	streams    streamRegistry  // 进行中的会话流(chat.go)
+	translates streamRegistry  // 进行中的翻译任务(translate.go)
 }
 
 // New 构造一个 Service;首次访问时懒加载磁盘内容

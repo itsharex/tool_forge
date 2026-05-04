@@ -1048,6 +1048,43 @@ func (a *App) RegenerateAILastChat(convID string) (aichat.Conversation, string) 
 	return *c, ""
 }
 
+// StartAITranslate 启动一次翻译;返回 jobID,前端按 jobID 订阅
+//
+//	translate:chunk:{id} / translate:done:{id} / translate:error:{id}
+func (a *App) StartAITranslate(req aichat.TranslateRequest) (string, string) {
+	if a.aichat == nil {
+		return "", "AI 服务未初始化"
+	}
+	id, err := a.aichat.StartTranslate(a.ctx, req)
+	if err != nil {
+		return "", err.Error()
+	}
+	return id, ""
+}
+
+// StopAITranslate 取消进行中的翻译任务
+func (a *App) StopAITranslate(jobID string) string {
+	if a.aichat == nil {
+		return "AI 服务未初始化"
+	}
+	if !a.aichat.CancelTranslate(jobID) {
+		return "该任务已结束或不存在"
+	}
+	return ""
+}
+
+// DetectAILanguage 用 LLM 识别文本语言,返回英文语言名(Chinese/English/...)
+func (a *App) DetectAILanguage(providerID, modelID, text string) (string, string) {
+	if a.aichat == nil {
+		return "", "AI 服务未初始化"
+	}
+	lang, err := a.aichat.DetectLanguageLLM(a.ctx, providerID, modelID, text)
+	if err != nil {
+		return "", err.Error()
+	}
+	return lang, ""
+}
+
 // StopAIChat 取消正在进行的流;若该会话没有正在进行的流则返回错误
 func (a *App) StopAIChat(convID string) string {
 	if a.aichat == nil {
