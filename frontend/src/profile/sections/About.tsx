@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
 import {
   AlertTriangle,
   CheckCircle2,
@@ -89,16 +90,15 @@ export function AboutSection() {
             问题反馈
             <ExternalLink className="h-3 w-3 opacity-60" />
           </a>
-          <a
-            href="https://github.com/xiaoxu123195/tool_forge"
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
+            onClick={() => BrowserOpenURL('https://github.com/xiaoxu123195/tool_forge')}
             className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent"
           >
             <Github className="h-3.5 w-3.5" />
             GitHub
             <ExternalLink className="h-3 w-3 opacity-60" />
-          </a>
+          </button>
         </div>
       </div>
 

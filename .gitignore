@@ -53,5 +53,3 @@ scripts/use-go125.bat
 *.tmp
 *.bak
 
-# 开发文档
-docs/
