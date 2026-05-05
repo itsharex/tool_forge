@@ -1,42 +1,34 @@
 # Tool Forge 开发文档
 
-本文档面向项目的开发者与 AI 协作者，描述项目定位、技术栈、目录结构、模块规范与迭代流程。README 面向最终用户，不含本文件的内部信息。
+面向二次开发者与 AI 协作者，描述项目当前的架构、目录、约定与"如何加一个新东西"。
+README 面向用户，本文不重复其内容。
 
 ---
 
 ## 1. 项目定位
 
-**Tool Forge** 是一款跨平台桌面程序员工具箱，目标是：
+Tool Forge 是基于 Wails v2 的跨平台桌面工具箱。核心原则三条：
 
-- **覆盖广**：不侧重单一领域，长期沉淀为"一站式"开发者日常工具集合
-- **轻量快**：单文件分发、启动秒开、常驻内存 < 150MB
-- **一致的交互**：每一个工具都遵循相同的布局与操作习惯，降低心智负担
-- **可扩展**：新增一个工具 = 新增一个独立前端路由 + 可选的后端处理器，互不干扰
-
-区别于"功能堆砌"型工具箱，Tool Forge 更强调**工具之间交互一致、视觉统一、添加新工具成本低**。
+- **离线优先**：常规处理在前端完成，需要系统能力或 Go 生态的走 Go；除 AI 工具调用用户自配的远端 LLM 外，没有任何第三方网络依赖
+- **统一外壳**：所有工具共用一套 ToolShell + 配色 + 快捷键，写一个新工具不用碰 layout/header
+- **可拆**：每个工具一个独立目录、一份 `meta.ts`，注册表里加一行就上架
 
 ---
 
 ## 2. 技术栈
 
-| 层次       | 选型                                         |
-| ---------- | -------------------------------------------- |
-| 桌面框架   | Wails v2                                     |
-| 后端语言   | Go 1.21+                                     |
-| 前端框架   | React 18 + TypeScript 5                      |
-| 构建工具   | Vite                                         |
-| UI 组件    | shadcn/ui（基于 Radix UI）+ Tailwind CSS     |
-| 状态管理   | Zustand                                      |
-| 路由       | React Router v6                              |
-| 代码编辑器 | Monaco Editor（按需引入）                    |
-| 图标       | lucide-react                                 |
-
-**为什么是这套：**
-
-- **Wails** 对 Go 原生绑定，打包体积 10-20MB，比 Electron 省一个数量级
-- **React + TS** 生态最成熟，shadcn/ui 直接把组件源码 copy 到项目里，可完全定制
-- **Tailwind** 保证多工具视觉统一，避免每个工具独写 CSS
-- **Zustand** 替代 Redux/Pinia，零样板，工具箱场景足够
+| 层 | 选型 | 备注 |
+| --- | --- | --- |
+| 桌面框架 | Wails v2.11 | Go ↔ JS 双向 RPC + 事件总线 |
+| 后端 | Go 1.24 | 模块名 `tool_forge` |
+| 前端 | React 18 + TypeScript 5 + Vite 5 | |
+| UI | Tailwind CSS + shadcn/ui 风格 | 组件 copy-in，可改源码 |
+| 状态 | Zustand 4 + `persist` | 配置类 store 持久化到 localStorage / Keychain |
+| 路由 | React Router v6 | |
+| 编辑器 | CodeMirror 6 | 按需引入语法包 |
+| 图标 | lucide-react | 全站统一 |
+| 凭据 | `github.com/zalando/go-keyring` | API Key / Cookie 等敏感数据 |
+| PDF 文本提取 | `github.com/ledongthuc/pdf` | AI Chat 文件附件用 |
 
 ---
 
@@ -44,54 +36,54 @@
 
 ```
 tool_forge/
-├── main.go                      # Wails 入口
-├── app.go                       # App 结构体，暴露给前端的统一入口
-├── wails.json                   # Wails 配置
+├── main.go                        # Wails 入口
+├── app.go                         # 暴露给前端的 RPC 集合
+├── wails.json                     # Wails 配置（版本号写在这里）
 ├── go.mod / go.sum
-├── Makefile                     # 构建脚本
-├── README.md                    # 面向用户
-├── CLAUDE.md                    # 面向 AI 协作者的速查
+├── README.md                      # 面向用户
+├── LICENSE                        # MIT
 ├── docs/
-│   ├── DEVELOPMENT.md           # 本文件
-│   └── images/                  # 截图与素材
+│   ├── DEVELOPMENT.md             # 本文
+│   └── images/                    # README 用图与截图
 ├── backend/
-│   ├── tools/                   # 每个工具一个子包（见 §5）
-│   │   ├── jsontool/
-│   │   ├── base64tool/
-│   │   └── ...
-│   ├── system/                  # 系统能力（文件保存、更新检查、窗口等）
-│   └── common/                  # 通用工具函数
+│   ├── tools/                     # 每个工具一个子包（详见 §5）
+│   │   ├── aichat/                # AI 对话 + 翻译 + 多协议适配
+│   │   ├── aistupid/              # AI 智障检测
+│   │   ├── appsearch/             # App 全平台搜索（七麦等）
+│   │   ├── charles/               # Charles Key 生成
+│   │   ├── claudeinsight/         # Claude 用量洞察
+│   │   ├── clipboard/             # 剪贴板历史
+│   │   ├── codexinsight/          # Codex 用量洞察
+│   │   ├── envscan/               # 开发环境扫描
+│   │   ├── forensic/              # 移动取证（go-forensic 集成）
+│   │   ├── httptest/              # HTTP 调试
+│   │   ├── netscan/               # 网络工具集
+│   │   └── providerswitch/        # AI Provider 切换
+│   ├── system/                    # 系统能力：data / hotkey / system
+│   └── updater/                   # 自动更新：检查、下载、安装
 └── frontend/
-    ├── index.html
     ├── package.json
     ├── tailwind.config.ts
     ├── vite.config.ts
     ├── tsconfig.json
     └── src/
-        ├── main.tsx             # React 入口
-        ├── App.tsx              # 根组件 + 路由
-        ├── layouts/
-        │   └── MainLayout.tsx   # 左侧菜单 + 右侧工具区
+        ├── main.tsx               # React 入口
+        ├── App.tsx                # 路由 + 全局事件订阅
+        ├── layouts/               # MainLayout：左菜单 + 右内容
         ├── components/
-        │   ├── ui/              # shadcn/ui 生成的基础组件
-        │   └── tool/            # 工具页通用壳：ToolHeader、ToolPanel ...
-        ├── tools/               # 每个工具一个目录（见 §5）
-        │   ├── json-format/
-        │   │   ├── index.tsx
-        │   │   ├── logic.ts
-        │   │   └── meta.ts
-        │   └── ...
-        ├── profile/             # 个人主页（见 §13，一级页面，不走 tools 注册表）
+        │   ├── ui/                # shadcn/ui 基础组件
+        │   ├── tool/              # ToolShell、ToolHeader、MarkdownPreview ...
+        │   ├── CommandPalette.tsx
+        │   └── ToolContextMenu.tsx
+        ├── tools/                 # 每个工具一个目录（详见 §5）
+        │   └── registry.ts        # 全部工具的总入口
+        ├── profile/               # 个人主页（独立一级页面）
         │   ├── index.tsx
-        │   └── sections/        # 基础信息、AI 配置、偏好、关于 ...
-        ├── stores/              # Zustand store
-        │   ├── layout.ts        # 侧栏折叠、主题等
-        │   ├── tools.ts         # 工具注册表、顺序、可见性
-        │   └── profile.ts       # 个人信息 + AI 配置（加密持久化）
-        ├── hooks/
-        ├── lib/                 # 工具函数（cn、文件保存封装等）
-        └── styles/
-            └── globals.css
+        │   └── sections/          # 基础信息 / AI 配置 / AI 用量 / 数据 / 关于 ...
+        ├── pages/                 # Profile 之外的非工具页（如 404）
+        ├── stores/                # Zustand store（按主题切片）
+        ├── lib/                   # cn、文件保存、剪贴板封装等
+        └── styles/globals.css     # 全局变量、暗色主题、代码块配色
 ```
 
 ---
@@ -99,45 +91,53 @@ tool_forge/
 ## 4. 架构与数据流
 
 ```
-┌─────────────────────────────────────────────┐
-│  React 前端（Vite dev server / 嵌入产物）   │
-│  ├─ 左侧菜单（工具注册表 stores/tools.ts）  │
-│  └─ 右侧工具页（tools/*/index.tsx）         │
-└──────────────────┬──────────────────────────┘
-                   │  Wails Binding（自动生成 TS 类型）
-┌──────────────────┴──────────────────────────┐
-│  Go 后端                                     │
-│  app.go                                      │
-│  └─ backend/tools/<name>  （纯函数处理器）  │
-│  └─ backend/system        （文件、窗口、更新）│
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  React 前端                                              │
+│  ├─ MainLayout（侧栏 + Profile 入口 + 全局快捷键）       │
+│  ├─ /tools/* 工具页（tools/<name>/index.tsx）            │
+│  └─ /profile  个人主页（profile/sections/*）             │
+└─────────────────────┬───────────────────────────────────┘
+                      │  Wails Binding（自动生成 TS 类型）
+                      │  + Wails Events（流式输出 / 进度）
+┌─────────────────────┴───────────────────────────────────┐
+│  Go 后端 (app.go)                                        │
+│  ├─ backend/tools/<name>     业务处理器                  │
+│  ├─ backend/system           data / hotkey / system      │
+│  └─ backend/updater          检查 / 下载 / 安装          │
+└─────────────────────────────────────────────────────────┘
 ```
 
-**前后端职责划分：**
+**前后端职责划分**
 
-- **前端能独立完成就不走后端**。例如 JSON 格式化、进制转换、URL 编解码，直接用 JS 库或手写，避免一次不必要的 RPC 调用
-- **需要系统能力或 Go 生态更强才走后端**。例如：原生保存对话框、二进制处理、JWT 签名验证、protobuf 解析、证书解析、调用本地命令
-- 后端函数**必须是纯函数**（输入→输出），不持有状态，方便单测
+| 类型 | 在哪做 | 例子 |
+| --- | --- | --- |
+| 纯计算、字符串处理 | **前端** | JSON 格式化、Base64、URL 编解码、进制转换、Hash、UUID |
+| 需 Go 生态或二进制 | **后端** | Protobuf 解析、PDF 文本提取、MMKV、证书解析、Hex |
+| 系统能力 | **后端** | 文件对话框、剪贴板监听、全局快捷键、Keychain |
+| 第三方 CLI 集成 | **后端** | go-forensic |
+| AI 流式调用 | **后端** | OpenAI / Anthropic / Gemini / 自定义兼容协议 |
+
+后端处理器尽量保持**纯函数**（输入→输出/error），有状态的（AI Chat、剪贴板、自动更新）封装成 `Service`，由 `app.go` 持有。
 
 ---
 
 ## 5. 工具模块规范
 
-### 5.1 新增一个工具的完整步骤
+### 5.1 新增一个工具
 
-假设新增一个「JSON 格式化」工具：
+以「JSON 格式化」为例。
 
 **前端**
 
 ```
 frontend/src/tools/json-format/
-├── index.tsx      # 工具主组件（默认导出）
-├── logic.ts       # 纯函数：format / minify / escape
-├── meta.ts        # 工具元信息
-└── examples.ts    # 示例数据
+├── index.tsx       # 默认导出工具组件
+├── meta.ts         # 工具元信息
+├── logic.ts        # 纯函数（可选）
+└── examples.ts     # 示例数据（可选）
 ```
 
-**meta.ts** 示例：
+**meta.ts**
 
 ```ts
 import { Braces } from 'lucide-react'
@@ -149,20 +149,15 @@ export const meta: ToolMeta = {
   title: 'JSON 格式化',
   description: '格式化、压缩、转义 JSON，支持对比模式',
   icon: Braces,
-  category: 'data',         // 见 §5.2
-  order: 10,
+  category: 'data',          // 见 §5.3
+  order: 10,                 // 同类内排序
   defaultVisible: true,
 }
 ```
 
-**后端（可选）**：仅当需要 Go 处理时
+**注册**：在 `frontend/src/tools/registry.ts` 顶部加 `import` + 数组里加一行。菜单、路由、命令面板自动生效。
 
-```
-backend/tools/jsontool/
-└── jsontool.go    // func Format(input string) (string, error) 等纯函数
-```
-
-然后在 `app.go` 里导出：
+**后端（可选）**：在 `backend/tools/jsontool/jsontool.go` 写处理器，然后在 `app.go` 暴露：
 
 ```go
 func (a *App) JSONFormat(input string) (string, error) {
@@ -170,24 +165,11 @@ func (a *App) JSONFormat(input string) (string, error) {
 }
 ```
 
-最后在 `frontend/src/stores/tools.ts` 的注册表里引入 `meta`，菜单和路由自动生效。
+修改 Go 方法后跑 `wails generate module` 重新生成前端绑定。
 
-### 5.2 工具分类（category）
+### 5.2 工具页统一壳
 
-| category  | 含义              | 示例                                   |
-| --------- | ----------------- | -------------------------------------- |
-| `data`    | 数据结构化处理    | JSON/XML/YAML 编辑器、格式转换         |
-| `codec`   | 编解码            | Base64、URL、Unicode、进制转换         |
-| `crypto`  | 加解密与哈希      | MD5/SHA、AES、RSA、JWT                 |
-| `time`    | 时间相关          | 时间戳、Cron 解析                      |
-| `text`    | 文本处理          | 正则测试、文本对比、大小写转换         |
-| `network` | 网络与 HTTP       | cURL 转换、IP 查询、UA 解析            |
-| `gen`     | 生成类            | UUID、雪花 ID、二维码、Mock 数据       |
-| `dev`     | 其他开发辅助      | 颜色转换、图片 Base64、代码片段        |
-
-### 5.3 工具页统一壳
-
-所有工具页**必须**使用通用壳组件，不要自己写 header：
+**必须**用 `ToolShell`，不要自己写 header：
 
 ```tsx
 import { ToolShell } from '@/components/tool/ToolShell'
@@ -196,7 +178,7 @@ export default function JSONFormatTool() {
   return (
     <ToolShell
       title="JSON 格式化"
-      actions={<>...顶部按钮...</>}
+      actions={<>...右侧操作按钮...</>}
       onClear={() => ...}
       onLoadExample={() => ...}
     >
@@ -206,176 +188,183 @@ export default function JSONFormatTool() {
 }
 ```
 
-`ToolShell` 统一处理：标题栏、清空按钮、示例按钮、快捷键、错误提示。
+`ToolShell` 统一处理：标题栏、清空按钮、示例按钮、错误提示位、快捷键路由。
+
+### 5.3 工具分类
+
+`stores/tools.ts` 中 `ToolCategory` 枚举与 `CATEGORY_LABELS`：
+
+| category | 中文 | 示例 |
+| --- | --- | --- |
+| `forensic` | 取证 | 移动取证、App 搜索 |
+| `data` | 数据处理 | JSON 编辑器、Plist、JSON→Go、XML、MMKV |
+| `ai` | AI 工具 | AI Chat、翻译、Provider 切换、Claude/Codex 洞察、AI 监控 |
+| `codec` | 编解码 | Base64、URL、Unicode、进制 |
+| `crypto` | 加解密 | Hash、Crypto Lab、Charles Key、JWT |
+| `time` | 时间 | 时间戳、Cron |
+| `text` | 文本 | 文本对比、正则、Protobuf |
+| `network` | 网络 | HTTP 测试、网络工具集、cURL 转换 |
+| `gen` | 生成 | UUID、QR 码、颜色 |
+| `dev` | 开发 | Hex、环境扫描 |
+| `system` | 系统 | 剪贴板 |
 
 ---
 
-## 6. UI / UX 规范
+## 6. AI 工具架构（重点）
 
-Tool Forge 走**现代留白**风格，和市面上紧凑型工具箱做区分。核心原则：
+AI Chat 与翻译共用 `backend/tools/aichat`，是项目里最复杂的模块。
 
-- **呼吸感 > 密度**：默认 16-20px 间距，不堆元素
-- **单一主色**：整体中性灰调 + 一个品牌主色（待定，初期用 `zinc` + `indigo-500`）
-- **无多余视觉装饰**：不用渐变、不用阴影特效，边框统一 `border-border`
-- **深浅色主题必须同时支持**：通过 Tailwind `dark:` 前缀
+### 6.1 多协议适配
 
-### 6.1 颜色与间距
+四套上游协议，文件按协议拆分：
 
-直接用 Tailwind 与 shadcn/ui 暴露的 CSS 变量，**不要硬编码颜色**：
+| 文件 | 协议 |
+| --- | --- |
+| `openai.go` | OpenAI Chat Completions + Responses（含所有 OpenAI 兼容代理） |
+| `anthropic.go` | Anthropic Messages |
+| `gemini.go` | Google Generative Language |
+| `chat.go` | 编排层：选协议、收集流、持久化 |
 
-```tsx
-<div className="border border-border bg-background text-foreground">
+每个 `stream*` 函数接受统一的 `streamCallbacks`（`onText / onThinking / onImage / onUsage / onDone / onError`），调用方不感知协议差异。
+
+### 6.2 流式与事件
+
+后端通过 Wails 事件向前端推流：
+
+```
+ai-chat:text:<convID>       文本 delta
+ai-chat:thinking:<convID>   思考过程 delta
+ai-chat:image:<convID>      图片（部分模型支持）
+ai-chat:usage:<convID>      token 用量（流末尾）
+ai-chat:done:<convID>       结束
+ai-chat:error:<convID>      错误（用户取消会路由到 done，不是 error）
 ```
 
-### 6.2 工具页布局规范
+翻译工具用相同模式但前缀是 `translate:`。
+
+### 6.3 多模态内容构建
+
+四套协议各自一个 `build*Messages` / `build*Input` / `build*Contents`，把统一的前端 `Message`（带 `images` / `files`）翻成上游能消化的格式。差异点：
+
+- OpenAI Responses：`input_text` / `input_image` / `input_file`
+- OpenAI Chat Completions：`content` 数组里 `image_url` / `text`
+- Anthropic：`content` 数组里 `image.source.base64` / `document.source.base64`
+- Gemini：`parts[].inlineData`
+
+`file.go` 处理两件事：
+
+1. **文本类文件**统一在前端解析（mammoth / xlsx / JSZip + `<a:t>` 正则），扔给所有协议都没问题
+2. **PDF**：原生支持 PDF 的协议（Anthropic、Gemini）走 base64；纯 OpenAI 兼容代理走后端 `ledongthuc/pdf` 提取文本后塞进 prompt
+
+### 6.4 用量记账
+
+每次 AI 调用末尾的 `usage` 事件触发 `appendUsageRecord`，以 JSONL 追加写入用户数据目录。`ListAIUsage` 给前端用量页提供原始记录，前端聚合出今日/本月、KPI、堆叠柱、模型/供应商分布。
+
+### 6.5 凭据存储
+
+`Provider.APIKey` 永远只在后端访问，调用前从 keyring 取出，前端只持有"是否已配置"和脱敏展示值。
+
+---
+
+## 7. UI / UX 规范
+
+### 7.1 视觉
+
+- 配色用 `globals.css` 里的 CSS 变量（`--background` / `--foreground` / `--border` / `--info` / `--success` / `--destructive` ...），**不要写硬编码颜色**
+- 双主题（浅色 + 多套深色变体）通过根元素的 class 切换
+- 边框统一 `border-border`，间距偏向 16-20px 留白
+- 图标统一 `lucide-react`，size 默认 `h-3.5 w-3.5` 或 `h-4 w-4`
+
+### 7.2 工具页布局
 
 ```
 ┌────────────────────────────────────────────────┐
 │ ToolShell Header (h-12)                        │
-│ ├─ 标题                                         │
-│ └─ 右侧操作区（示例/清空/复制/...）            │
 ├────────────────────────────────────────────────┤
-│ 内容区（padding: 16px）                         │
-│                                                 │
-│   通常是左右两栏（输入/输出）                   │
-│   或上下两栏（移动端 / 需求更宽时）             │
-│                                                 │
+│ 内容区（默认 padding 16px）                     │
+│   通常左右两栏（输入 / 输出）                    │
 └────────────────────────────────────────────────┘
 ```
 
-- **自动处理**：输入变化即触发转换，不设置独立「转换」按钮
-- **一致的快捷键**：`Ctrl/Cmd+K` 打开命令面板、`Ctrl/Cmd+,` 打开设置、`Esc` 清空焦点区
-- **错误展示**：输入错误时在输出区标红提示，不弹窗
+- **自动处理**：输入变化即触发，不放显式"转换"按钮（除非耗时操作）
+- **错误展示**：输入错误时在输出区标红，不弹窗
+- 全局快捷键：`Ctrl/Cmd+K` 命令面板、`Ctrl/Cmd+,` Profile
 
-### 6.3 侧边栏
+### 7.3 侧边栏
 
-- 默认展开宽度 220px，可折叠到 56px（只剩图标）
-- 工具按 category 分组，每组有标题
-- 支持拖拽排序、隐藏
-
----
-
-## 7. 状态管理约定
-
-- **工具内部短暂状态**（如 textarea 当前内容）用 `useState`，不要塞 store
-- **跨页面要保留的状态**（如用户上次输入的 JSON）放 Zustand store，按工具分 slice
-- **全局偏好**（主题、侧栏折叠、工具顺序/可见性）放 `stores/layout.ts` + `stores/tools.ts`，持久化到 localStorage
+- 默认展开 220px，可折叠到 56px（仅图标）
+- 工具按 category 分组、按 `order` 排序
+- 拖拽排序与隐藏状态持久化在 `stores/tools.ts`
 
 ---
 
-## 8. 前后端通信约定
+## 8. 状态管理约定
 
-- 所有后端方法挂在 `App` 结构体上，命名：`<动词><名词>`，如 `JSONFormat`、`JWTDecode`
-- 错误统一返回 `(result, error)`，前端用 `try/catch` 捕获
-- 绑定生成：修改 Go 方法后运行 `wails generate module`
-- **不要**在后端做 UI 提示，后端只返回数据或错误
+| 范围 | 工具 |
+| --- | --- |
+| 工具内部短暂状态（textarea 当前值） | `useState` |
+| 跨页保留（用户上次输入） | Zustand store + `persist` |
+| 全局偏好（主题、侧栏、工具顺序/可见） | `stores/layout.ts` + `stores/tools.ts` |
+| AI Provider / API Key（敏感） | 后端 keyring，前端只读元数据 |
 
----
-
-## 9. 构建与发布
-
-| 命令                      | 用途                         |
-| ------------------------- | ---------------------------- |
-| `wails dev`               | 开发模式，前端热重载         |
-| `wails build`             | 当前平台生产构建             |
-| `make build-win`          | Windows amd64                |
-| `make build-mac`          | macOS universal              |
-| `make build-win-dev`      | 带 devtools 的调试版         |
-
-产物在 `build/bin/`。版本号维护在 `wails.json` 的 `info.productVersion`。
+Store 命名：`use<Domain>Store`，文件名 kebab-case 或 domain-case，按主题切片。带 persist 的 store 必须写 `version` + `migrate`，方便后续字段调整。
 
 ---
 
-## 10. 初始工具路线图（Phase 0）
+## 9. 前后端通信约定
 
-MVP 先实现以下 6 个，用来把框架、工具壳、菜单、主题、保存等基础设施跑通：
+- 后端方法挂在 `App` 结构体上，命名 `<动词><名词>`：`SendAIChat` / `JSONFormat` / `CheckForensic`
+- 错误统一 `(result, error)` 返回，前端 `try/catch`
+- 流式输出走 Wails 事件，不走返回值；事件名前缀按工具走（`ai-chat:` / `translate:` / `clipboard:` ...）
+- 后端**不做 UI 提示**，只返回数据 / 错误，文案由前端组装
 
-1. JSON 格式化 / 压缩 / 转义
-2. Base64 文本编解码
-3. URL 编解码
-4. 时间戳转换
-5. UUID / 雪花 ID 生成
-6. 进制转换
+---
 
-第二批（Phase 1）：
+## 10. 构建与发布
 
-- 正则表达式测试
-- JWT 解析
-- 哈希计算（MD5/SHA1/SHA256/SHA512）
-- 二维码生成
-- cURL 转多语言代码
-- 颜色转换
+```bash
+wails dev                         # 开发模式（前端热重载）
+wails build                       # 当前平台
+wails build -platform windows/amd64
+wails build -platform darwin/universal
+```
 
-第三批（Phase 2）：
+产物在 `build/bin/`。版本号写在 `wails.json` 的 `info.productVersion`。
 
-- JSON ↔ Go Struct
-- JSON ↔ YAML ↔ TOML
-- Cron 表达式解析
-- 文本对比（Monaco Diff）
-- 图片 Base64
-- Mock 数据生成
+发布流程：
+
+1. 改 `wails.json` 版本
+2. 写 changelog（写到 `build/manifest.json` 或自动更新接口的元数据）
+3. `wails build` → 上传到对象存储 / Release
+4. 客户端 `backend/updater` 拉到新版后下载 + 安装重启
 
 ---
 
 ## 11. 提交与协作
 
-- 提交信息格式：`<type>: <message>`，type 取自 `feat / fix / refactor / docs / chore / style`
-- 新增一个工具一个独立 commit，便于回溯
-- PR / commit 描述需要说明「动机」而非仅「做了什么」
+- 提交格式：`<type>(<scope>): <message>`
+  - type：`feat` / `fix` / `refactor` / `docs` / `chore` / `style`
+  - scope：工具或模块名（`aichat` / `translate` / `profile` / `updater`）
+- 一个工具新增建议**单独一个 commit**，便于 cherry-pick / 回溯
+- 提交描述写"动机"，不只是"做了什么"
 
 ---
 
-## 13. 个人主页（Profile）
+## 12. 安全与隐私
 
-**Profile 是独立于工具集的一级页面**，入口放在左侧菜单底部（头像 / 齿轮图标），路由 `/profile`，不进入工具注册表。
-
-### 13.1 定位
-
-个人主页是后续 AI 能力落地的配置中心。**当前阶段只搭骨架与基础信息页，AI 相关 section 留占位。**
-
-### 13.2 预留 section 规划
-
-```
-Profile
-├── 基础信息        # 昵称、头像、主题偏好（已可实现）
-├── AI 配置（预留）  # 模型提供方、API Key、自定义 endpoint、默认模型、温度等
-├── AI 用量（预留）  # 本地记账、按工具统计调用次数 / token
-├── 工具偏好        # 工具顺序、可见性、默认展开状态（与 stores/tools.ts 联动）
-├── 数据            # 导入 / 导出配置、清空本地数据
-└── 关于            # 版本、开源协议、检查更新
-```
-
-### 13.3 敏感数据存储
-
-AI Key 这类敏感数据**不能明文存 localStorage**。方案：
-
-- 通过 Wails 后端写入操作系统凭据库：Windows 用 `wincred`、macOS 用 Keychain、Linux 用 Secret Service（统一用 `github.com/zalando/go-keyring`）
-- 前端只持有**脱敏展示值**（如 `sk-****abcd`）与"是否已配置"标志
-- 实际调用 AI 时由后端从凭据库读取后转发请求，Key 永不暴露到前端
-
-### 13.4 AI 能力后续落地方式（路线预设）
-
-AI 不是独立工具，而是作为**现有工具的增强**存在。例如：
-
-- 正则工具 → 「自然语言生成正则」按钮
-- JSON 工具 → 「根据描述生成示例 JSON」
-- cURL 转换 → 「解释这个请求在做什么」
-- 文本对比 → 「总结两段差异」
-
-每个工具页检测 `profile.ai.configured === true` 时才显示 AI 增强入口，未配置时按钮置灰并引导到 `/profile` 的 AI 配置 section。
-
-### 13.5 当前阶段 TODO
-
-- [ ] 左侧菜单底部入口 + 路由 `/profile`
-- [ ] Profile 页壳 + 侧边 section 导航
-- [ ] 基础信息 section（昵称、头像、主题）
-- [ ] 其余 section **只放占位卡片 + 「即将推出」标签**，不写具体逻辑
+- AI Provider Key、七麦 PHPSESSID 等敏感凭据**只走 keyring**，绝不落 localStorage / 配置文件明文
+- 用户文档（PDF / Office / 代码片段）作为附件发给 AI 的瞬间会通过 HTTPS 出本地，必须在 UI 里显式化（带文件卡片 + 可移除）
+- AI 用量 JSONL 只在本地，不上报
+- Claude / Codex 洞察工具读取 `~/.claude` / `~/.codex` 时只读、不写、不传
 
 ---
 
-## 14. 待决定事项
+## 13. 已知坑位与设计取舍
 
-- [ ] 品牌主色最终定板
-- [ ] 图标与 logo 设计
-- [ ] 是否内置插件系统（允许用户通过脚本新增工具）
-- [ ] 自动更新服务器地址
+| 项 | 备注 |
+| --- | --- |
+| `tool_forge` 模块名不带 `github.com/` 前缀 | 历史原因；改名牵动所有 import，开源后保留现状 |
+| OpenAI 兼容代理千差万别 | 经常出现 `delta.content:""` / 不返回 usage / 思考标签写法各异；`openai.go` 的 `sniffImagesFromPayload` 与 `recentPayloads` 兜底就是这么来的 |
+| Wails 多返回值 | 部分前端绑定会把单字符串当对象返回，`pickFirst/pickSecond` 兼容多形态 |
+| Windows emoji 国旗渲染失败 | 翻译工具改用 `country-flag-icons` SVG + `React.lazy` |
+| context.Canceled 不弹错 | 用户主动停流时 `chat.go` 把 error 路由成 done，不弹"读取流失败" |

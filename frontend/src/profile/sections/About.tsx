@@ -89,16 +89,16 @@ export function AboutSection() {
             问题反馈
             <ExternalLink className="h-3 w-3 opacity-60" />
           </a>
-          <span
-            className="group/gh relative inline-flex h-8 cursor-not-allowed items-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium opacity-60"
-            aria-disabled="true"
+          <a
+            href="https://github.com/xiaoxu123195/tool_forge"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent"
           >
             <Github className="h-3.5 w-3.5" />
             GitHub
-            <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-popover px-2 py-1 text-[11px] text-popover-foreground opacity-0 shadow-md ring-1 ring-border transition-opacity duration-200 group-hover/gh:opacity-100">
-              暂未开源
-            </span>
-          </span>
+            <ExternalLink className="h-3 w-3 opacity-60" />
+          </a>
         </div>
       </div>
 
