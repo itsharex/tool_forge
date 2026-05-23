@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 type Theme = 'light' | 'dark' | 'system'
-export type StyleId = 'minimal' | 'nebula' | 'ocean' | 'forest' | 'glass'
+export type StyleId = 'minimal' | 'nebula' | 'ocean' | 'forest' | 'glass' | 'clay'
 
 interface LayoutState {
   sidebarCollapsed: boolean

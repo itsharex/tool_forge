@@ -84,6 +84,13 @@ export function BasicSection() {
             description="苔绿森系，舒缓低疲"
           />
           <StylePreviewCard
+            id="clay"
+            active={styleId === 'clay'}
+            onSelect={setStyle}
+            title="Clay"
+            description="陶土暖橙，温润书房"
+          />
+          <StylePreviewCard
             id="glass"
             active={styleId === 'glass'}
             onSelect={setStyle}
@@ -415,6 +422,35 @@ function StylePreview({ styleId }: { styleId: StyleId }) {
           <div className="h-6 w-6 rounded-md bg-green-500/30 ring-1 ring-green-400/40" />
           <div className="h-6 w-6 rounded-md bg-lime-500/30 ring-1 ring-lime-400/40" />
           <div className="ml-auto h-1.5 w-8 rounded-full bg-gradient-to-r from-emerald-400 to-green-400" />
+        </div>
+      </div>
+    )
+  }
+  if (styleId === 'clay') {
+    // 暖米底 + 橙色星形 + 浅卡片,呼应"陶土"色感
+    return (
+      <div className="relative h-20 overflow-hidden rounded-md bg-[hsl(30_25%_96%)]">
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(circle at 18% 25%, hsl(15 65% 65% / 0.18), transparent 55%), radial-gradient(circle at 85% 78%, hsl(30 60% 70% / 0.14), transparent 55%)',
+          }}
+        />
+        <div className="relative flex h-full items-center gap-2.5 p-3">
+          {/* Claude 橙色星形标志 */}
+          <div
+            className="flex h-6 w-6 items-center justify-center rounded-md font-bold text-[16px] leading-none"
+            style={{ color: '#D97757' }}
+          >
+            ✲
+          </div>
+          <div className="h-5 w-20 rounded-md bg-white ring-1 ring-[hsl(30_16%_86%)]" />
+          <div className="h-5 w-12 rounded-md bg-white/80 ring-1 ring-[hsl(30_16%_86%)]" />
+          <div
+            className="ml-auto h-1.5 w-8 rounded-full"
+            style={{ background: 'linear-gradient(to right, #D97757, #C76A4C)' }}
+          />
         </div>
       </div>
     )

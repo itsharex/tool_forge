@@ -337,6 +337,111 @@
       0 12px 28px -12px hsl(158 70% 25% / 0.5);
   }
 
+  /* ================== Clay - Light ==================
+     暖米色背景 + 陶土橙(#D97757) + 偏咖啡的深灰文字,温润书房感 */
+  :root[data-style='clay'] {
+    --background: 30 25% 96%;
+    --foreground: 25 12% 18%;
+
+    --card: 30 30% 99%;
+    --card-foreground: 25 12% 18%;
+
+    --primary: 15 55% 55%;
+    --primary-foreground: 30 30% 99%;
+
+    --secondary: 30 20% 92%;
+    --secondary-foreground: 25 12% 18%;
+
+    --muted: 30 18% 93%;
+    --muted-foreground: 25 8% 42%;
+
+    --accent: 30 25% 90%;
+    --accent-foreground: 25 12% 18%;
+
+    --destructive: 0 70% 52%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* info 用陶土橙;success/warning 选与暖色调和的低饱和度 */
+    --info: 15 60% 55%;
+    --info-foreground: 0 0% 100%;
+    --success: 142 45% 38%;
+    --success-foreground: 0 0% 100%;
+    --warning: 35 85% 50%;
+    --warning-foreground: 25 12% 18%;
+
+    --border: 30 16% 86%;
+    --input: 30 16% 86%;
+    --ring: 15 55% 55%;
+
+    --sidebar: 30 24% 94%;
+
+    --radius: 0.625rem;
+
+    --ambient-gradient: radial-gradient(
+        circle at 12% 8%,
+        hsl(15 65% 65% / 0.08) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 88% 88%,
+        hsl(30 60% 70% / 0.06) 0%,
+        transparent 55%
+      );
+    --card-shadow-soft: 0 1px 3px 0 hsl(25 30% 20% / 0.04),
+      0 8px 20px -10px hsl(15 50% 40% / 0.12);
+  }
+
+  /* ================== Clay - Dark ==================
+     暖咖啡深底 + 略亮的陶土橙,夜间书房 */
+  .dark[data-style='clay'] {
+    --background: 25 8% 11%;
+    --foreground: 30 15% 92%;
+
+    --card: 25 8% 14%;
+    --card-foreground: 30 15% 92%;
+
+    --primary: 15 65% 62%;
+    --primary-foreground: 25 8% 11%;
+
+    --secondary: 25 6% 18%;
+    --secondary-foreground: 30 15% 92%;
+
+    --muted: 25 6% 18%;
+    --muted-foreground: 25 8% 62%;
+
+    --accent: 25 6% 20%;
+    --accent-foreground: 30 15% 92%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --info: 15 70% 62%;
+    --info-foreground: 25 8% 11%;
+    --success: 142 55% 55%;
+    --success-foreground: 25 8% 11%;
+    --warning: 35 90% 60%;
+    --warning-foreground: 25 8% 11%;
+
+    --border: 25 6% 22%;
+    --input: 25 6% 22%;
+    --ring: 15 65% 62%;
+
+    --sidebar: 25 9% 9%;
+
+    --ambient-gradient: radial-gradient(
+        circle at 12% 8%,
+        hsl(15 60% 40% / 0.18) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 88% 88%,
+        hsl(30 50% 35% / 0.12) 0%,
+        transparent 55%
+      );
+    --card-shadow-soft: 0 1px 2px 0 hsl(25 30% 2% / 0.5),
+      0 12px 28px -12px hsl(15 60% 25% / 0.4);
+  }
+
   /* ================== Nebula - Dark ================== */
   .dark[data-style='nebula'] {
     --background: 240 20% 5%;
