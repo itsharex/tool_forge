@@ -240,7 +240,7 @@ export function Sidebar({ onOpenCommandPalette }: SidebarProps = {}) {
                         <Icon className="h-4 w-4 shrink-0" />
                         {!collapsed && (
                           <>
-                            <span className="truncate">{tool.title}</span>
+                            <span className="truncate">{tool.sidebarTitle ?? tool.title}</span>
                             {pinned && (
                               <Pin
                                 className="ml-auto h-3 w-3 shrink-0 fill-info/60 text-info/60"

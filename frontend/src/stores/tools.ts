@@ -19,7 +19,10 @@ export type ToolCategory =
 export interface ToolMeta {
   id: string
   path: string
+  /** 完整标题:工具页 ToolShell、命令面板、首页卡片等都用它 */
   title: string
+  /** 侧边栏专用短名,横向空间紧;不填则 fallback 到 title */
+  sidebarTitle?: string
   description: string
   icon: LucideIcon
   category: ToolCategory

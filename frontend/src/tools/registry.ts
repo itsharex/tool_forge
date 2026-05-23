@@ -88,6 +88,9 @@ import { meta as aiChatMeta } from './ai-chat/meta'
 import Translate from './translate'
 import { meta as translateMeta } from './translate/meta'
 
+import ChatGPTAuth from './chatgpt-auth'
+import { meta as chatgptAuthMeta } from './chatgpt-auth/meta'
+
 import Regex from './regex'
 import { meta as regexMeta } from './regex/meta'
 
@@ -149,6 +152,7 @@ export const tools: ToolEntry[] = [
   { meta: providerSwitchMeta, Component: ProviderSwitch },
   { meta: aiChatMeta, Component: AIChat },
   { meta: translateMeta, Component: Translate },
+  { meta: chatgptAuthMeta, Component: ChatGPTAuth },
   { meta: httpTestMeta, Component: HttpTest },
   { meta: netToolsMeta, Component: NetTools },
 ]
