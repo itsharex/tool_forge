@@ -57,7 +57,9 @@ func SearchSessions(codexDir, query string, hitLimit int) (*SearchResult, error)
 	sem := make(chan struct{}, 8)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	var hits []SearchHit
+	// 必须用 make([]T, 0) 而非 var hits []T,否则无命中时 JSON 编码为 null,
+	// 前端访问 result.hits.length 会抛 TypeError 导致白屏。
+	hits := make([]SearchHit, 0)
 	total := 0
 
 	for _, p := range files {

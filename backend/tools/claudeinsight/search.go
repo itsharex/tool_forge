@@ -18,9 +18,9 @@ type SearchHit struct {
 	SessionID   string `json:"session_id"`
 	Project     string `json:"project"`
 	FilePath    string `json:"file_path"`
-	Role        string `json:"role"`        // "user" | "assistant"
-	Snippet     string `json:"snippet"`     // 命中文本片段(约 200 字符)
-	Timestamp   string `json:"timestamp"`   // RFC3339
+	Role        string `json:"role"`      // "user" | "assistant"
+	Snippet     string `json:"snippet"`   // 命中文本片段(约 200 字符)
+	Timestamp   string `json:"timestamp"` // RFC3339
 	MessageUUID string `json:"message_uuid"`
 }
 
@@ -77,7 +77,9 @@ func SearchSessions(claudeDir, query string, hitLimit int) (*SearchResult, error
 	sem := make(chan struct{}, 8)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	var hits []SearchHit
+	// 必须用 make([]T, 0) 而非 var hits []T,否则无命中时 JSON 编码为 null,
+	// 前端访问 result.hits.length 会抛 TypeError 导致白屏。
+	hits := make([]SearchHit, 0)
 	total := 0
 
 	for _, p := range files {

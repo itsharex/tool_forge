@@ -77,7 +77,7 @@ export function Search() {
         <EmptyHint />
       ) : loading && !result ? (
         <Loading />
-      ) : result && result.hits.length === 0 ? (
+      ) : result && (result.hits?.length ?? 0) === 0 ? (
         <NoMatch query={result.query} />
       ) : result ? (
         <ResultsList result={result} query={debounced} onOpen={setOpened} />
@@ -158,7 +158,7 @@ function ResultsList({
         </span>
       </div>
       <ul className="space-y-1.5">
-        {result.hits.map((h, i) => (
+        {(result.hits ?? []).map((h, i) => (
           <HitRow key={`${h.file_path}-${h.message_uuid}-${i}`} hit={h} query={query} onOpen={() => onOpen(h)} />
         ))}
       </ul>
