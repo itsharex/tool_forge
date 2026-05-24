@@ -72,6 +72,11 @@ export const TOOL_EXAMPLES: Record<string, ToolExampleSet> = {
         hint: 'sources 数组多选,所有源并发执行,任一失败不影响其他',
         body: { keyword: '微信', sources: ['itunes', 'yingyongbao'], country: 'cn' },
       },
+      {
+        label: '需要更多结果',
+        hint: '默认每源 5 条,传 limit_per_source 可拿更多(最大 50)',
+        body: { keyword: '微信', sources: ['itunes'], country: 'cn', limit_per_source: 20 },
+      },
     ],
     fields: [
       { name: 'keyword', required: true, type: 'string', description: '搜索关键词,可填应用名或包名' },
@@ -89,6 +94,11 @@ export const TOOL_EXAMPLES: Record<string, ToolExampleSet> = {
         name: 'market',
         type: 'number',
         description: 'Android 厂商市场 ID,仅 qimai_android 用;见下方备注',
+      },
+      {
+        name: 'limit_per_source',
+        type: 'number',
+        description: '每个源最多返回多少条,默认 5,上限 50;90% 场景目标 App 在前 1-2 条,不用调大',
       },
     ],
     notes: [

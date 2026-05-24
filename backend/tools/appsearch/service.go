@@ -48,6 +48,13 @@ func (s *Service) Search(ctx context.Context, req SearchRequest) (*SearchRespons
 	if country == "" {
 		country = "cn"
 	}
+	limit := req.LimitPerSource
+	if limit <= 0 {
+		limit = DefaultLimitPerSource
+	}
+	if limit > MaxLimitPerSource {
+		limit = MaxLimitPerSource
+	}
 
 	var (
 		mu       sync.Mutex
@@ -66,6 +73,10 @@ func (s *Service) Search(ctx context.Context, req SearchRequest) (*SearchRespons
 			if err != nil {
 				status.Error = err.Error()
 			} else {
+				// 每源截断到 limit;Count 反映截断后的真实数量
+				if len(results) > limit {
+					results = results[:limit]
+				}
 				status.OK = true
 				status.Count = len(results)
 			}

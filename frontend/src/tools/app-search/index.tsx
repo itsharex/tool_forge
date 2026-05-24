@@ -29,6 +29,8 @@ export default function AppSearch() {
         country: form.country,
         sources: form.sources,
         market: form.market,
+        // 工具页保留 20 条/源的浏览体验;外部 API 调用默认 5(后端 service 自处理)
+        limit_per_source: 20,
       })
       setItems(resp.items ?? [])
       setStatuses(resp.statuses ?? [])
