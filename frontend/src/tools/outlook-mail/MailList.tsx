@@ -3,7 +3,7 @@ import { Inbox, Loader2, RefreshCw, ShieldAlert } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { avatarLetter, avatarStyle } from './avatar'
 import { outlookAPI } from './api'
-import type { Folder, Mail } from './types'
+import type { FolderView, Mail } from './types'
 
 export function MailList({
   accountID,
@@ -14,10 +14,10 @@ export function MailList({
   reloadToken,
 }: {
   accountID: string
-  folder: Folder
+  folder: FolderView
   selectedMailID: string
   onSelectMail: (m: Mail) => void
-  onChangeFolder: (f: Folder) => void
+  onChangeFolder: (f: FolderView) => void
   reloadToken: number
 }) {
   const [mails, setMails] = useState<Mail[]>([])
@@ -40,12 +40,28 @@ export function MailList({
       setLoading(true)
       setError('')
       try {
-        const res = await outlookAPI.listMails(accountID, folder, p, 20)
-        setTotal(res.total)
-        setHasMore(res.has_more)
-        setPage(p)
-        if (append) setMails((prev) => [...prev, ...(res.mails ?? [])])
-        else setMails(res.mails ?? [])
+        if (folder === 'all') {
+          // "全部" = 收件箱 + 垃圾邮件,并发拉取后按时间倒序合并
+          const [a, b] = await Promise.all([
+            outlookAPI.listMails(accountID, 'inbox', p, 20),
+            outlookAPI.listMails(accountID, 'junkemail', p, 20),
+          ])
+          const merged = [...(a.mails ?? []), ...(b.mails ?? [])].sort((m1, m2) =>
+            m2.received.localeCompare(m1.received),
+          )
+          setTotal((a.total ?? 0) + (b.total ?? 0))
+          setHasMore(!!a.has_more || !!b.has_more)
+          setPage(p)
+          if (append) setMails((prev) => [...prev, ...merged])
+          else setMails(merged)
+        } else {
+          const res = await outlookAPI.listMails(accountID, folder, p, 20)
+          setTotal(res.total)
+          setHasMore(res.has_more)
+          setPage(p)
+          if (append) setMails((prev) => [...prev, ...(res.mails ?? [])])
+          else setMails(res.mails ?? [])
+        }
       } catch (e) {
         setError(String(e))
       } finally {
@@ -71,8 +87,11 @@ export function MailList({
 
   return (
     <section className="flex w-[360px] shrink-0 flex-col border-r border-border">
-      <header className="flex h-10 shrink-0 items-center justify-between border-b border-border px-2">
-        <div className="flex gap-1">
+      <header className="flex h-10 shrink-0 items-center justify-between gap-1 border-b border-border px-2">
+        <div className="flex min-w-0 gap-1">
+          <FolderTab active={folder === 'all'} onClick={() => onChangeFolder('all')}>
+            全部
+          </FolderTab>
           <FolderTab active={folder === 'inbox'} onClick={() => onChangeFolder('inbox')}>
             收件箱
           </FolderTab>
@@ -84,11 +103,20 @@ export function MailList({
           type="button"
           onClick={() => load(1, false)}
           disabled={loading || !accountID}
-          className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
-          title="刷新"
+          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-foreground transition-all hover:border-info/60 hover:bg-info/5 hover:text-info disabled:cursor-not-allowed disabled:opacity-50"
+          title="刷新邮件列表"
         >
-          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-          {total > 0 && <span>{total}</span>}
+          {loading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" />
+          )}
+          <span>刷新</span>
+          {total > 0 && (
+            <span className="rounded-full bg-muted px-1.5 py-px text-[10px] tabular-nums text-muted-foreground">
+              {total}
+            </span>
+          )}
         </button>
       </header>
 

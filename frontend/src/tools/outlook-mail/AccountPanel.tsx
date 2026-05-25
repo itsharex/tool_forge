@@ -10,13 +10,14 @@ import {
   Plus,
   Power,
   Search,
+  Settings,
   Trash2,
   UserPlus,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { avatarLetter, avatarStyle } from './avatar'
 import { outlookAPI } from './api'
-import type { AccountStatus, AccountView } from './types'
+import type { AccountStatus, AccountView, Group } from './types'
 
 export type SortMode = 'order' | 'created' | 'email'
 export type PageSize = 20 | 50 | 100 | 200
@@ -32,6 +33,12 @@ const PAGE_SIZE_OPTIONS: PageSize[] = [20, 50, 100, 200]
 
 export function AccountPanel({
   accounts,
+  groups,
+  selectedGroupID,
+  countsByGroup,
+  onSelectGroup,
+  onOpenGroupManager,
+  hideGroupSelector,
   selectedID,
   selectedIDs,
   refreshingIDs,
@@ -48,6 +55,13 @@ export function AccountPanel({
   onAfterChange,
 }: {
   accounts: AccountView[]
+  groups: Group[]
+  selectedGroupID: string
+  countsByGroup: Record<string, number>
+  onSelectGroup: (id: string) => void
+  onOpenGroupManager: () => void
+  /** 宽屏布局下独立分组栏可见时,内部不渲染顶部下拉选择器,避免冗余。 */
+  hideGroupSelector?: boolean
   selectedID: string
   selectedIDs: Set<string>
   refreshingIDs: Set<string>
@@ -132,8 +146,14 @@ export function AccountPanel({
   const selectedCount = filtered.filter((a) => selectedIDs.has(a.id)).length
   const visibleTotal = filtered.length
 
+  const totalAccountCount = accounts.length
+  const currentGroup = groups.find((g) => g.id === selectedGroupID)
+  const currentGroupLabel = selectedGroupID === '' ? '全部' : currentGroup?.name ?? '全部'
+  const currentGroupCount =
+    selectedGroupID === '' ? totalAccountCount : countsByGroup[selectedGroupID] ?? 0
+
   return (
-    <section className="flex w-80 shrink-0 flex-col border-r border-border">
+    <section className="flex w-72 shrink-0 flex-col border-r border-border">
       {/* 顶部工具栏 */}
       <header className="flex h-10 shrink-0 items-center justify-between gap-1 border-b border-border px-2">
         <span className="text-xs font-medium text-foreground">
@@ -180,6 +200,20 @@ export function AccountPanel({
           </div>
         </div>
       </header>
+
+      {/* 分组选择器(窄屏才显示;宽屏时左侧已有独立分组栏) */}
+      {!hideGroupSelector && (
+        <GroupSelector
+          groups={groups}
+          selectedID={selectedGroupID}
+          countsByGroup={countsByGroup}
+          totalCount={totalAccountCount}
+          label={currentGroupLabel}
+          count={currentGroupCount}
+          onSelect={onSelectGroup}
+          onManage={onOpenGroupManager}
+        />
+      )}
 
       {/* 选中行动栏 / 排序栏 */}
       {hasSelection ? (
@@ -549,5 +583,136 @@ function DropdownItem({
   )
 }
 
-// 让 ChevronDown 不被未使用警告(留给将来按需添加 dropdown caret)
-void ChevronDown
+/**
+ * 分组选择器:替代原独立分组栏。
+ * 显示一个 chip 样式的下拉触发器(当前分组名 + 计数),点击展开列表 + 管理入口。
+ */
+function GroupSelector({
+  groups,
+  selectedID,
+  countsByGroup,
+  totalCount,
+  label,
+  count,
+  onSelect,
+  onManage,
+}: {
+  groups: Group[]
+  selectedID: string
+  countsByGroup: Record<string, number>
+  totalCount: number
+  label: string
+  count: number
+  onSelect: (id: string) => void
+  onManage: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    setTimeout(() => document.addEventListener('mousedown', handler), 0)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div className="relative border-b border-border px-2 py-1.5" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          'flex h-8 w-full items-center gap-1.5 rounded-md border border-border bg-background px-2 text-xs transition-colors hover:border-info/60 hover:bg-info/5',
+          open && 'border-info/60 bg-info/5',
+        )}
+      >
+        <span className="truncate font-medium">{label}</span>
+        <span className="rounded-full bg-muted px-1.5 text-[10px] tabular-nums text-muted-foreground">
+          {count}
+        </span>
+        <ChevronDown
+          className={cn(
+            'ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform',
+            open && 'rotate-180',
+          )}
+        />
+      </button>
+      {open && (
+        <div className="absolute left-2 right-2 top-full z-50 mt-1 max-h-[60vh] overflow-auto rounded-md border border-border bg-card py-1 shadow-lg">
+          <GroupOption
+            label="全部"
+            count={totalCount}
+            active={selectedID === ''}
+            onClick={() => {
+              onSelect('')
+              setOpen(false)
+            }}
+          />
+          <div className="my-1 border-t border-border/60" />
+          {groups.map((g) => (
+            <GroupOption
+              key={g.id}
+              label={g.name}
+              count={countsByGroup[g.id] ?? 0}
+              active={selectedID === g.id}
+              onClick={() => {
+                onSelect(g.id)
+                setOpen(false)
+              }}
+            />
+          ))}
+          <div className="my-1 border-t border-border/60" />
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false)
+              onManage()
+            }}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Settings className="h-3.5 w-3.5" />
+            管理分组
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GroupOption({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string
+  count: number
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors',
+        active
+          ? 'bg-info/15 font-medium text-info'
+          : 'text-foreground/90 hover:bg-accent hover:text-foreground',
+      )}
+    >
+      <span className="flex-1 truncate">{label}</span>
+      <span
+        className={cn(
+          'rounded-full px-1.5 text-[10px] tabular-nums',
+          active ? 'bg-info/20 text-info' : 'bg-muted text-muted-foreground',
+        )}
+      >
+        {count}
+      </span>
+    </button>
+  )
+}
+

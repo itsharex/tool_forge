@@ -5,17 +5,15 @@ import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
 import { cn } from '@/lib/utils'
 import { avatarLetter, avatarStyle } from './avatar'
 import { outlookAPI } from './api'
-import type { ExtractResult, Folder, Mail, MailDetail as MailDetailT } from './types'
+import type { ExtractResult, Mail, MailDetail as MailDetailT } from './types'
 
 export function MailDetail({
   accountEmail,
   accountID,
-  folder,
   mail,
 }: {
   accountEmail: string
   accountID: string
-  folder: Folder
   mail: Mail | null
 }) {
   const [detail, setDetail] = useState<MailDetailT | null>(null)
@@ -33,7 +31,7 @@ export function MailDetail({
     let cancelled = false
     setLoading(true)
     void outlookAPI
-      .getMail(accountID, folder, mail.id)
+      .getMail(accountID, mail.folder, mail.id)
       .then((d) => {
         if (cancelled) return
         setDetail(d)
@@ -50,7 +48,7 @@ export function MailDetail({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accountID, folder, mail?.id])
+  }, [accountID, mail?.id, mail?.folder])
 
   const runExtractInline = async (d: MailDetailT) => {
     setExtracting(true)

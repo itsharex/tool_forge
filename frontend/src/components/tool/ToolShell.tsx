@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Eraser, FileCode2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface ToolShellProps {
   title: string
@@ -9,6 +10,12 @@ interface ToolShellProps {
   onClear?: () => void
   onLoadExample?: () => void
   children: ReactNode
+  /**
+   * 满版布局:body 变成 flex container(flex-col),去掉 padding 和外层 overflow-auto。
+   * 适合需要自己接管整个内容区(多列 / 自带滚动)的工具,比如 outlook-mail、ai-chat 风格的多栏布局。
+   * 默认 false,保持原有"居中表单 + 自动滚动"行为。
+   */
+  fullBleed?: boolean
 }
 
 export function ToolShell({
@@ -18,6 +25,7 @@ export function ToolShell({
   onClear,
   onLoadExample,
   children,
+  fullBleed,
 }: ToolShellProps) {
   return (
     <div className="flex h-full flex-col">
@@ -44,7 +52,15 @@ export function ToolShell({
           )}
         </div>
       </header>
-      <div className="flex-1 overflow-auto p-5" data-tool-scroll="true">{children}</div>
+      <div
+        className={cn(
+          'min-h-0 flex-1',
+          fullBleed ? 'flex flex-col' : 'overflow-auto p-5',
+        )}
+        data-tool-scroll={fullBleed ? undefined : 'true'}
+      >
+        {children}
+      </div>
     </div>
   )
 }

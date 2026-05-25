@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ToolShell } from '@/components/tool/ToolShell'
@@ -10,11 +10,12 @@ import { ImportDialog } from './ImportDialog'
 import { AuthSaveDialog } from './AuthSaveDialog'
 import { EditAccountDialog } from './EditAccountDialog'
 import { ExportDialog } from './ExportDialog'
+import { GroupManagerDialog } from './GroupManagerDialog'
 import { RefreshManagerDialog } from './RefreshManagerDialog'
 import { MailList } from './MailList'
 import { MailDetail } from './MailDetail'
 import { SettingsDialog } from './SettingsDialog'
-import type { AccountView, Folder, Group, Mail } from './types'
+import type { AccountView, FolderView, Group, Mail } from './types'
 
 export default function OutlookMailTool() {
   const [groups, setGroups] = useState<Group[]>([])
@@ -22,7 +23,7 @@ export default function OutlookMailTool() {
   const [selectedGroupID, setSelectedGroupID] = useState<string>('')
   const [selectedAccountID, setSelectedAccountID] = useState<string>('')
   const [selectedMail, setSelectedMail] = useState<Mail | null>(null)
-  const [folder, setFolder] = useState<Folder>('inbox')
+  const [folder, setFolder] = useState<FolderView>('all')
   const [selectedIDs, setSelectedIDs] = useState<Set<string>>(new Set())
   const [refreshingIDs, setRefreshingIDs] = useState<Set<string>>(new Set())
   const [showImport, setShowImport] = useState(false)
@@ -30,6 +31,20 @@ export default function OutlookMailTool() {
   const [showExport, setShowExport] = useState(false)
   const [showRefresh, setShowRefresh] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showGroupManager, setShowGroupManager] = useState(false)
+
+  // 宽屏(>= 1100px)下显示独立分组栏,窄屏折叠到账号栏顶部下拉
+  const layoutRef = useRef<HTMLDivElement | null>(null)
+  const [wideLayout, setWideLayout] = useState(false)
+  useEffect(() => {
+    const el = layoutRef.current
+    if (!el) return
+    const update = () => setWideLayout(el.clientWidth >= 1100)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const [editTarget, setEditTarget] = useState<AccountView | null>(null)
   const [mailReloadToken, setMailReloadToken] = useState(0)
 
@@ -104,6 +119,7 @@ export default function OutlookMailTool() {
     <ToolShell
       title={meta.title}
       description={meta.description}
+      fullBleed
       actions={
         <>
           <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)}>
@@ -113,19 +129,27 @@ export default function OutlookMailTool() {
         </>
       }
     >
-      <div className="flex min-h-0 flex-1">
-        <GroupPanel
-          groups={groups}
-          selectedID={selectedGroupID}
-          countsByGroup={countsByGroup}
-          onSelect={setSelectedGroupID}
-          onChanged={async () => {
-            await reloadGroups()
-            await reloadAccounts()
-          }}
-        />
+      <div ref={layoutRef} className="flex min-h-0 flex-1">
+        {wideLayout && (
+          <GroupPanel
+            groups={groups}
+            selectedID={selectedGroupID}
+            countsByGroup={countsByGroup}
+            onSelect={setSelectedGroupID}
+            onChanged={async () => {
+              await reloadGroups()
+              await reloadAccounts()
+            }}
+          />
+        )}
         <AccountPanel
           accounts={filteredAccounts}
+          groups={groups}
+          selectedGroupID={selectedGroupID}
+          countsByGroup={countsByGroup}
+          onSelectGroup={setSelectedGroupID}
+          onOpenGroupManager={() => setShowGroupManager(true)}
+          hideGroupSelector={wideLayout}
           selectedID={selectedAccountID}
           selectedIDs={selectedIDs}
           refreshingIDs={refreshingIDs}
@@ -155,7 +179,6 @@ export default function OutlookMailTool() {
         <MailDetail
           accountEmail={selectedAccount?.email ?? ''}
           accountID={selectedAccountID}
-          folder={folder}
           mail={selectedMail}
         />
       </div>
@@ -204,6 +227,17 @@ export default function OutlookMailTool() {
       )}
       {showSettings && (
         <SettingsDialog onClose={() => setShowSettings(false)} onSaved={() => undefined} />
+      )}
+      {showGroupManager && (
+        <GroupManagerDialog
+          groups={groups}
+          countsByGroup={countsByGroup}
+          onClose={() => setShowGroupManager(false)}
+          onChanged={async () => {
+            await reloadGroups()
+            await reloadAccounts()
+          }}
+        />
       )}
     </ToolShell>
   )

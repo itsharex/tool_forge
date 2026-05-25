@@ -4,6 +4,11 @@
 
 export type AccountStatus = 'active' | 'token_expired' | 'banned' | 'unknown'
 export type Folder = 'inbox' | 'junkemail' | 'deleteditems'
+/**
+ * 前端展示用的文件夹视图,比后端 Folder 多一个 'all'(收件箱 + 垃圾邮件合并的虚拟视图)。
+ * 不会传给后端 — 'all' 时由前端并发拉取两个真实文件夹再合并。
+ */
+export type FolderView = Folder | 'all'
 
 export interface AccountView {
   id: string
