@@ -60,7 +60,20 @@ const (
 	imagePreviewLimit = 4 << 20
 	// hexPreviewLimit 认不出类型时给多少字节的十六进制
 	hexPreviewLimit = 2 << 10
+	// sqlitePullLimit 为了翻表最多整个拉多大的库。
+	//
+	// 库不能按预览那套上限截着拉 —— 截断的 SQLite 文件就是损坏的文件,
+	// 打开直接报错。所以认出是库之后要整个重拉一遍。
+	// 但也不能无限:设备上几百 MB 的库拉一次要好几分钟,
+	// 超过这个数就说清楚"没拉全",让人改用导出
+	sqlitePullLimit = 512 << 20
 )
+
+// sqliteSidecars 库旁边要一起拉的文件。
+//
+// -wal 里是还没并回主库的最新写入。iOS 上短信、通讯录、通话记录
+// 每一个旁边都有 -wal,不带它就等于把最近那批数据整个漏掉,而且毫无提示
+var sqliteSidecars = []string{"-wal", "-shm"}
 
 // Preview 拉一份下来并尽力认出它是什么
 func (m *Manager) Preview(sessionID, remote, cacheDir string) (*Preview, error) {
@@ -97,6 +110,12 @@ func (m *Manager) Preview(sessionID, remote, cacheDir string) (*Preview, error) 
 	}
 	head := readHead(local, 64)
 	m.classify(p, s, remote, head)
+
+	// 认出是库之后要重来一遍:整个拉,并且带上伴随文件。
+	// 上面那一份是按预览上限截的,拿去打开只会报"文件损坏"
+	if p.Kind == "sqlite" {
+		m.completeSQLite(sessionID, s, remote, local, st.Size, p)
+	}
 	return p, nil
 }
 
@@ -121,7 +140,6 @@ func (m *Manager) classify(p *Preview, s *Session, remote string, head []byte) {
 		// 内容由前端拿 LocalPath 去读 —— 那份副本已经在本地了,
 		// 而 sqlitex 保证读的时候不会改动它
 		p.Kind, p.Why = "sqlite", "文件头是 SQLite format 3"
-		p.Note = "SQLite 数据库,下面直接翻表"
 
 	case m.looksLikeMMKV(s, remote):
 		p.Kind, p.Why = "mmkv", "旁边有同名的 .crc 文件,这是 MMKV 的落盘特征"
@@ -336,4 +354,64 @@ func safeLocalName(remote string) string {
 		name = "file"
 	}
 	return name
+}
+
+// completeSQLite 把一个库拉全,并带上它的伴随文件。
+//
+// 预览那一遍是按上限截着拉的,对别的类型没问题(看个开头就够),
+// 对 SQLite 却是致命的:截断的库打不开。而且只拉主库还会漏掉 -wal 里
+// 最新的那批数据 —— 那恰恰是取证最想要的部分。
+//
+// 拉不全时不静默:把原因写进 Note,人才知道看到的东西不完整
+func (m *Manager) completeSQLite(sessionID string, s *Session, remote, local string, size int64, p *Preview) {
+	if size > sqlitePullLimit {
+		p.Note = fmt.Sprintf("这个库有 %s,超过预览能拉的上限,没有整个取下来;"+
+			"要翻它的内容请先用「导出」把它拉到本地", humanSize(size))
+		p.Truncated = true
+		return
+	}
+
+	// limit 传 0 = 要整个文件
+	if _, _, err := m.Pull(sessionID, remote, local, 0); err != nil {
+		p.Note = "这个库没能整个取下来: " + err.Error()
+		p.Truncated = true
+		return
+	}
+	p.Truncated = false
+
+	var got []string
+	for _, suffix := range sqliteSidecars {
+		side := remote + suffix
+		if !s.t.exists(side) {
+			continue
+		}
+		if _, _, err := m.Pull(sessionID, side, local+suffix, 0); err != nil {
+			// 伴随文件拉不下来不算致命,主库还是能看的;但得说一声,
+			// 因为这时候看到的就是"少了最新一批"的版本
+			p.Note = "旁边的 " + suffix + " 没取下来,最近写入的数据可能看不到: " + err.Error()
+			return
+		}
+		got = append(got, suffix)
+	}
+	if len(got) > 0 {
+		// 说出来是必要的:带不带 WAL,看到的内容不一样,
+		// 而两者在界面上长得一模一样
+		p.Note = "SQLite 数据库。已连同 " + strings.Join(got, " / ") + " 一起取下,含尚未并入主库的最新数据"
+	} else {
+		p.Note = "SQLite 数据库,下面直接翻表"
+	}
+}
+
+// humanSize 说人话的大小
+func humanSize(n int64) string {
+	const unit = 1024
+	if n < unit {
+		return fmt.Sprintf("%d B", n)
+	}
+	div, exp := int64(unit), 0
+	for v := n / unit; v >= unit; v /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "KMGT"[exp])
 }
