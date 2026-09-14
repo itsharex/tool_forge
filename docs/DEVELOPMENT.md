@@ -47,6 +47,7 @@ tool_forge/
 │   └── images/                    # README 用图与截图
 ├── backend/
 │   ├── tools/                     # 每个工具一个子包（详见 §5）
+│   │   ├── adbx/                  # adb 底座：连服务端、挑设备、跑命令（内置 adb）
 │   │   ├── aichat/                # AI 对话 + 翻译 + 多协议适配
 │   │   ├── aistupid/              # AI 智障检测
 │   │   ├── appsearch/             # App 全平台搜索（七麦等）
@@ -54,11 +55,22 @@ tool_forge/
 │   │   ├── claudeinsight/         # Claude 用量洞察
 │   │   ├── clipboard/             # 剪贴板历史
 │   │   ├── codexinsight/          # Codex 用量洞察
+│   │   ├── devicefs/              # 真机文件浏览（Android adb / iOS SFTP）
 │   │   ├── envscan/               # 开发环境扫描
-│   │   ├── forensic/              # 移动取证（go-forensic 集成）
+│   │   ├── filehash/              # 文件哈希与类型识别
+│   │   ├── forensic/              # 移动取证：两个平台都直连提取，go-forensic 为可选备选
 │   │   ├── httptest/              # HTTP 调试
+│   │   ├── iosmux/                # usbmuxd 协议 + 经 USB 的 SSH
+│   │   ├── llmproxy/              # LLM 透明代理 + 请求留档
+│   │   ├── mcp/                   # MCP 客户端
+│   │   ├── mmkv/                  # MMKV 解析
+│   │   ├── netenvcheck/           # 网络环境体检
 │   │   ├── netscan/               # 网络工具集
-│   │   └── providerswitch/        # AI Provider 切换
+│   │   ├── outlookmail/           # Outlook 邮箱管理
+│   │   ├── plist/                 # plist / NSKeyedArchiver 解析
+│   │   ├── protobuf/              # protobuf 裸字节解析
+│   │   ├── providerswitch/        # AI Provider 切换
+│   │   └── sqlitex/               # SQLite 关键词搜索与表浏览（只读，不改动证据）
 │   ├── system/                    # 系统能力：data / hotkey / system
 │   └── updater/                   # 自动更新：检查、下载、安装
 └── frontend/
@@ -114,7 +126,8 @@ tool_forge/
 | 纯计算、字符串处理 | **前端** | JSON 格式化、Base64、URL 编解码、进制转换、Hash、UUID |
 | 需 Go 生态或二进制 | **后端** | Protobuf 解析、PDF 文本提取、MMKV、证书解析、Hex |
 | 系统能力 | **后端** | 文件对话框、剪贴板监听、全局快捷键、Keychain |
-| 第三方 CLI 集成 | **后端** | go-forensic |
+| 设备协议直连 | **后端** | adb（adbx）、usbmuxd + SSH（iosmux） |
+| 第三方 CLI 集成 | **后端** | go-forensic（仅作移动取证的可选备选引擎，不装也能用） |
 | AI 流式调用 | **后端** | OpenAI / Anthropic / Gemini / 自定义兼容协议 |
 
 后端处理器尽量保持**纯函数**（输入→输出/error），有状态的（AI Chat、剪贴板、自动更新）封装成 `Service`，由 `app.go` 持有。
