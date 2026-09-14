@@ -73,8 +73,13 @@ const btn = (label: string) => {
   )
 }
 
-/** 往输入框里打字(React 受控组件要走原生 setter 才认) */
-const type = async (placeholder: string, value: string) => {
+/**
+ * 往输入框里打字(React 受控组件要走原生 setter 才认)。
+ *
+ * 找不到框时返回 false,不抛 —— 所以几乎所有地方都该用下面的 mustType。
+ * 名字里带 try 是故意的:省得有人顺手写 type() 又掉进静默失败里
+ */
+const tryType = async (placeholder: string, value: string) => {
   const el = document.querySelector(
     `input[placeholder*="${placeholder}"]`,
   ) as HTMLInputElement | null
@@ -180,7 +185,7 @@ const mustClick = async (label: string) => {
  * 这条用例本身就是这么红的,所以给它一个会喊的版本
  */
 const mustType = async (placeholder: string, value: string) => {
-  if (!(await type(placeholder, value))) {
+  if (!(await tryType(placeholder, value))) {
     throw new Error('找不到输入框「' + placeholder + '」')
   }
 }
@@ -195,7 +200,7 @@ async function main() {
         await click('看看这一轮会带哪些工具')
         // 会话内搜索:开、输入、翻页。命中要跳转 + 高亮,跳转会碰 scrollIntoView
         await click('在会话里查找 (Ctrl+F)')
-        await type('在这个会话里查找', '的')
+        await mustType('在这个会话里查找', '的')
         await click('下一条 (Enter)')
         await click('上一条 (Shift+Enter)')
         await click('关闭 (Esc)')
@@ -299,7 +304,7 @@ async function main() {
     '跨会话搜索',
     <GlobalSearchDialog onPick={() => {}} onClose={() => {}} />,
     async () => {
-      await type('在所有会话里查找', '泛型')
+      await mustType('在所有会话里查找', '泛型')
       // 防抖 200ms,得等过去
       await act(async () => {
         await sleep(320)
@@ -463,7 +468,7 @@ async function main() {
     if (!(document.body.textContent || '').includes('连接一台设备')) {
       throw new Error('未连接时没有显示连接面板')
     }
-    await type('越狱设备默认', '123456')
+    await mustType('越狱设备默认', '123456')
     await mustClick('连接')
     const txt = document.body.textContent || ''
     if (!txt.includes('com.apple.springboard.plist')) throw new Error('没有列出目录内容')
@@ -489,7 +494,7 @@ async function main() {
 
   // 17) 搜索:结果列表要能出来,并且能切回目录
   await mount('真机浏览 · 搜索', <DeviceBrowser />, async () => {
-    await type('在当前目录下按名字找', 'plist')
+    await mustType('在当前目录下按名字找', 'plist')
     const input = document.querySelector(
       'input[placeholder*="在当前目录下按名字找"]',
     ) as HTMLInputElement
