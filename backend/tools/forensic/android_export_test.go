@@ -2,7 +2,9 @@ package forensic
 
 import (
 	"archive/tar"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -357,5 +359,106 @@ func TestNoClearKeepsEverything(t *testing.T) {
 	}
 	if len(logged) != 1 || !strings.HasPrefix(logged[0], "WARN") {
 		t.Errorf("目录非空该警告一声,日志是: %v", logged)
+	}
+}
+
+// untar 把一个 tar 文件解开。生产代码上只有流式的 untarFrom,
+// 但测试里从磁盘上造一个包再解要方便得多
+func untar(tarPath, dest string) (untarResult, error) {
+	f, err := os.Open(tarPath)
+	if err != nil {
+		return untarResult{}, err
+	}
+	defer f.Close()
+	return untarFrom(f, dest)
+}
+
+// 流式解包的关键一条:传到一半断了,必须报错,不能拿着半个包当成功。
+//
+// 安卓那条路现在是 adb 一边拉、untarFrom 一边解,中间靠 io.Pipe 连着。
+// 拉取失败时那头调 CloseWithError,读的这头必须把错误带出来 ——
+// 不然一次断掉的传输会安安静静地变成"导出成功",而目录里只有前半截文件。
+// 取证里这比直接失败糟得多:没人会去核对一份"成功"的导出。
+func TestStreamedUntarFailsOnTruncatedStream(t *testing.T) {
+	// 先造一个正常的包,拿到它的完整字节
+	dir := t.TempDir()
+	src := filepath.Join(dir, "full.tar")
+	f, _ := os.Create(src)
+	tw := tar.NewWriter(f)
+	body := make([]byte, 8192)
+	for i := range body {
+		body[i] = byte(i)
+	}
+	for _, name := range []string{"app/a.bin", "app/b.bin", "app/c.bin"} {
+		_ = tw.WriteHeader(&tar.Header{
+			Name: name, Mode: 0o644, Size: int64(len(body)), Typeflag: tar.TypeReg,
+		})
+		_, _ = tw.Write(body)
+	}
+	_ = tw.Close()
+	_ = f.Close()
+	whole, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 拉到一半断掉,和 adb 中途失败时一模一样
+	pr, pw := io.Pipe()
+	go func() {
+		_, _ = pw.Write(whole[:len(whole)/3])
+		pw.CloseWithError(errors.New("设备掉线了"))
+	}()
+	dest := filepath.Join(dir, "out")
+	_, err = untarFrom(pr, dest)
+	_ = pr.Close()
+	if err == nil {
+		t.Fatal("传了一半就断,却报告成功 —— 这样一次失败的导出会被当成完整的")
+	}
+	if !strings.Contains(err.Error(), "掉线") {
+		t.Errorf("该把底层的原因带出来,得到: %v", err)
+	}
+}
+
+// 完整的流要能正常解开,而且内容一个字节不差 ——
+// 上面那条只证明"断了会报错",不证明"没断时是对的"
+func TestStreamedUntarRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "full.tar")
+	f, _ := os.Create(src)
+	tw := tar.NewWriter(f)
+	want := []byte("一段会被原样解出来的内容")
+	_ = tw.WriteHeader(&tar.Header{
+		Name: "app/data.bin", Mode: 0o644, Size: int64(len(want)), Typeflag: tar.TypeReg,
+	})
+	_, _ = tw.Write(want)
+	_ = tw.Close()
+	_ = f.Close()
+	whole, _ := os.ReadFile(src)
+
+	pr, pw := io.Pipe()
+	go func() {
+		_, _ = pw.Write(whole)
+		pw.CloseWithError(nil)
+	}()
+	dest := filepath.Join(dir, "out")
+	res, err := untarFrom(pr, dest)
+	_ = pr.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.files != 1 {
+		t.Fatalf("该解出 1 个文件,得到 %d", res.files)
+	}
+	got, err := os.ReadFile(filepath.Join(dest, "app", "data.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(want) {
+		t.Errorf("内容对不上: %q", got)
+	}
+	// 本地不该留下任何 tar —— 流式那条路的全部意义就在这儿
+	tars, _ := filepath.Glob(filepath.Join(dest, "*.tar"))
+	if len(tars) > 0 {
+		t.Errorf("输出目录里留下了 tar: %v", tars)
 	}
 }

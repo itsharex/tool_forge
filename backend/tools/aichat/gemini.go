@@ -220,6 +220,7 @@ func geminiEmptyReason(blocked string) string {
 //
 //	usageMetadata 通常在最后一帧出现,字段:
 //	  promptTokenCount / candidatesTokenCount / thoughtsTokenCount / cachedContentTokenCount
+//
 // parseGeminiLengthCapped candidates[0].finishReason == MAX_TOKENS,
 // 即回复是被输出上限掐掉的。其余取值(STOP / SAFETY / RECITATION)另有去处:
 // 拦截类的由 parseGeminiBlock 翻成错误文案,正常结束的什么都不用做。

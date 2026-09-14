@@ -6,11 +6,11 @@ package envscan
 type Category string
 
 const (
-	CategoryLanguage Category = "language"        // 语言 / 运行时
-	CategoryPackage  Category = "package_manager" // 包管理器
-	CategoryAI       Category = "ai_cli"          // AI 命令行
-	CategoryToolchain Category = "toolchain"      // 开发工具链
-	CategoryDatabase Category = "database"        // 数据库客户端
+	CategoryLanguage  Category = "language"        // 语言 / 运行时
+	CategoryPackage   Category = "package_manager" // 包管理器
+	CategoryAI        Category = "ai_cli"          // AI 命令行
+	CategoryToolchain Category = "toolchain"       // 开发工具链
+	CategoryDatabase  Category = "database"        // 数据库客户端
 )
 
 // Status 扫描状态。未安装的条目不会返回，所以这里没有 not_installed。

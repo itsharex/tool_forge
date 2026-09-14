@@ -13,7 +13,7 @@ const qimaiBase = "https://api.qimai.cn"
 
 type qimaiIOSEntry struct {
 	AppInfo struct {
-		AppID     string `json:"appId"`     // iTunes trackId（字符串形式）
+		AppID     string `json:"appId"` // iTunes trackId（字符串形式）
 		AppName   string `json:"appName"`
 		Subtitle  string `json:"subtitle"`
 		Icon      string `json:"icon"`

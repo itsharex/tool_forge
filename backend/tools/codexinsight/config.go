@@ -17,12 +17,12 @@ var allowedConfigFiles = map[string]bool{
 
 // ConfigFile 代表一个配置文件的内容与元信息
 type ConfigFile struct {
-	Name      string `json:"name"`        // AGENTS.md / config.toml
-	Path      string `json:"path"`        // 绝对路径
+	Name      string `json:"name"` // AGENTS.md / config.toml
+	Path      string `json:"path"` // 绝对路径
 	Exists    bool   `json:"exists"`
 	Content   string `json:"content"`
 	Size      int64  `json:"size"`
-	UpdatedAt string `json:"updated_at"`  // RFC3339
+	UpdatedAt string `json:"updated_at"` // RFC3339
 }
 
 // ReadConfigFile 读取 ~/.codex 下指定配置文件的内容。

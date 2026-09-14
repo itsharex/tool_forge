@@ -381,10 +381,6 @@ func (e *androidExporter) exportOne(ctx context.Context, remote string) error {
 	}
 	stage := fmt.Sprintf("%s/.toolforge-%s-%d.tar", stageDir,
 		sanitize(path.Base(clean)), time.Now().UnixNano())
-	// 本地临时包按完整路径命名:三个目标的最后一层同名,只用最后一层的话
-	// 后一个会覆盖前一个正在用的包
-	localTar := filepath.Join(e.output, ".toolforge-"+sanitize(rel)+".tar")
-
 	e.log("packing %s", clean)
 	// -C / 之后给相对路径,包里就是完整的设备路径。
 	// 不靠 tar 自己剥掉开头的斜杠 —— 那是各家实现自便的行为,写明确的更稳
@@ -405,36 +401,35 @@ func (e *androidExporter) exportOne(ctx context.Context, remote string) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
+	// 边拉边解,不在本地落一份 tar。
+	//
+	// 落地那版要把整包写进磁盘、再整个读回来、最后删掉 —— 几百 MB 的应用
+	// 白白多一读一写。更要紧的是:进程中途被杀时,那个 .tar 会留在证据目录里。
+	//
+	// 设备上那一份还是躲不掉(adb 的同步协议要一个现成的文件才能拉),
+	// iOS 那边因为走的是 ssh 的 stdout,两头都不落文件。
 	e.log("pulling %s", stage)
-	f, err := os.Create(localTar)
-	if err != nil {
-		return err
-	}
 	pullStart := time.Now()
-	if err := e.dev.Pull(stage, f); err != nil {
-		_ = f.Close()
-		return fmt.Errorf("拉取失败: %w", err)
-	}
-	size, _ := f.Seek(0, io.SeekCurrent)
-	_ = f.Close()
-	pullTook := time.Since(pullStart)
-
-	e.log("extracting → %s", rel)
-	untarStart := time.Now()
-	res, err := untar(localTar, e.output)
+	pr, pw := io.Pipe()
+	go func() {
+		// CloseWithError 把拉取的错误交给读的那头:
+		// 传不完时解包必须报错,而不是拿着半个包当成功
+		pw.CloseWithError(e.dev.Pull(stage, pw))
+	}()
+	counted := &countingReader{r: pr}
+	res, err := untarFrom(counted, e.output)
+	// 解包先失败时,拉取那头还堵在写上,关掉读端让它退出来
+	_ = pr.Close()
 	if err != nil {
-		return fmt.Errorf("解包失败: %w", err)
+		return fmt.Errorf("拉取/解包失败: %w", err)
 	}
-	// 三段耗时写在一起。取证经常是几分钟起步的活,不给分段的话
-	// 只能盯着一行不动的日志猜是卡住了还是本来就慢
-	e.log("extracted %d file(s), %s (打包 %s / 拉取 %s / 解包 %s)",
-		res.files, humanSize(size),
-		round(packTook), round(pullTook), round(time.Since(untarStart)))
+
+	// 拉和解现在是同时发生的,分不开也就不该分开报 ——
+	// 给两个数字会让人以为它们是前后两段
+	e.log("extracted %d file(s), %s (打包 %s / 拉取+解包 %s)",
+		res.files, humanSize(counted.n),
+		round(packTook), round(time.Since(pullStart)))
 	reportUntar(res, e.log)
-	// 解完就不留 tar 了,不然输出目录里每个应用都多一份重复的压缩包
-	if err := os.Remove(localTar); err != nil {
-		e.log("WARN 本地临时包没删掉 %s: %v", localTar, err)
-	}
 	return nil
 }
 
@@ -484,20 +479,13 @@ const maxRenameSamples = 3
 //     com.tencent.mm:appbrand0 —— 冒号在 Windows 上是非法字符,
 //     mkdir 直接失败,而原来的写法会让整包解包中断,前面拉下来的全丢。
 //     现在改成替换非法字符并计数上报:数据留住,改动如实说出来。
-func untar(tarPath, dest string) (untarResult, error) {
-	f, err := os.Open(tarPath)
-	if err != nil {
-		return untarResult{}, err
-	}
-	defer f.Close()
-	return untarFrom(f, dest)
-}
-
-// untarFrom 从一个流里解包。
 //
-// iOS 那条路用它:tar 直接从设备的 ssh 通道流过来,边收边解,
-// 设备上不落任何文件 —— 取证时"不往被取证的设备写东西"是硬要求,
-// 能做到就该做到
+// untarFrom 从一个流里解包。两个平台都走它,边收边解,本地不落 tar。
+//
+// iOS 那边 tar 直接从设备的 ssh 通道流过来,设备上也不落文件;
+// 安卓那边 adb 的同步协议要一个现成的文件才能拉,所以设备上那一份躲不掉,
+// 但本地这一份可以省 —— 几百 MB 的应用少一读一写,
+// 而且进程被杀时不会在证据目录里留下半个 .tar
 func untarFrom(r io.Reader, dest string) (untarResult, error) {
 	var res untarResult
 	absDest, err := filepath.Abs(dest)

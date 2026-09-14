@@ -14,15 +14,15 @@ import (
 // qimaiAndroidSearchEntry 搜索结果条目
 type qimaiAndroidSearchEntry struct {
 	AppInfo struct {
-		AppID       string  `json:"appId"` // 七麦内部 ID（不是包名）
-		AppName     string  `json:"appName"`
-		Icon        string  `json:"icon"`
-		Publisher   string  `json:"publisher"`
+		AppID        string  `json:"appId"` // 七麦内部 ID（不是包名）
+		AppName      string  `json:"appName"`
+		Icon         string  `json:"icon"`
+		Publisher    string  `json:"publisher"`
 		CommentScore float64 `json:"comment_score"`
-		DownloadNum string  `json:"app_download_num"`
-		VersionTime string  `json:"version_time"`
+		DownloadNum  string  `json:"app_download_num"`
+		VersionTime  string  `json:"version_time"`
 	} `json:"appInfo"`
-	Genre    string `json:"genre"`
+	Genre   string `json:"genre"`
 	Company struct {
 		Name string `json:"name"`
 	} `json:"company"`

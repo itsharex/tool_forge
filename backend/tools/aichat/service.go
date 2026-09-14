@@ -13,10 +13,10 @@ import (
 
 // Service 是 aichat 工具的对外门面;线程安全
 type Service struct {
-	mu        sync.Mutex
-	providers []Provider
-	config    Config
-	loaded    bool
+	mu         sync.Mutex
+	providers  []Provider
+	config     Config
+	loaded     bool
 	ctx        context.Context // wails 启动后注入,用于 EventsEmit
 	streams    streamRegistry  // 进行中的会话流(chat.go)
 	translates streamRegistry  // 进行中的翻译任务(translate.go)

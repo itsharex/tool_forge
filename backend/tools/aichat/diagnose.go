@@ -79,14 +79,14 @@ func parseAnthropicStreamError(payload string) string {
 // geminiBlockReasons 把 Gemini 的拦截 / 截断原因翻成人话。
 // 这些同样走 HTTP 200,表现就是"回复是空的",不翻出来用户完全不知道发生了什么。
 var geminiBlockReasons = map[string]string{
-	"SAFETY":                "内容被 Gemini 的安全策略拦截",
-	"BLOCKLIST":             "内容命中了 Gemini 的屏蔽词表",
-	"PROHIBITED_CONTENT":    "内容被判定为违禁内容",
-	"RECITATION":            "回复因为疑似大段复述受版权保护的内容被中断",
-	"SPII":                  "内容涉及敏感个人信息被拦截",
-	"MAX_TOKENS":            "回复达到输出上限被截断(可以在会话设置里调大)",
-	"IMAGE_SAFETY":          "生成的图片被安全策略拦截",
-	"OTHER":                 "被 Gemini 以未说明的原因中断",
+	"SAFETY":                  "内容被 Gemini 的安全策略拦截",
+	"BLOCKLIST":               "内容命中了 Gemini 的屏蔽词表",
+	"PROHIBITED_CONTENT":      "内容被判定为违禁内容",
+	"RECITATION":              "回复因为疑似大段复述受版权保护的内容被中断",
+	"SPII":                    "内容涉及敏感个人信息被拦截",
+	"MAX_TOKENS":              "回复达到输出上限被截断(可以在会话设置里调大)",
+	"IMAGE_SAFETY":            "生成的图片被安全策略拦截",
+	"OTHER":                   "被 Gemini 以未说明的原因中断",
 	"MALFORMED_FUNCTION_CALL": "模型给出的函数调用格式不合法",
 }
 

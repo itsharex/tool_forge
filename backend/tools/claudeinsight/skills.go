@@ -15,11 +15,11 @@ import (
 
 // SkillSummary skill 列表页的一行
 type SkillSummary struct {
-	Name        string `json:"name"`         // 子目录名
-	Description string `json:"description"`  // 从 SKILL.md 首段或 frontmatter 抽
+	Name        string `json:"name"`        // 子目录名
+	Description string `json:"description"` // 从 SKILL.md 首段或 frontmatter 抽
 	FileCount   int    `json:"file_count"`
 	HasSkillMD  bool   `json:"has_skill_md"`
-	UpdatedAt   string `json:"updated_at"`   // RFC3339
+	UpdatedAt   string `json:"updated_at"` // RFC3339
 }
 
 // SkillList 列表页的返回值
@@ -30,7 +30,7 @@ type SkillList struct {
 
 // SkillFile skill 内部的单个文件/目录节点
 type SkillFile struct {
-	Path      string `json:"path"`       // 相对 skill 根
+	Path      string `json:"path"` // 相对 skill 根
 	IsDir     bool   `json:"is_dir"`
 	Size      int64  `json:"size"`
 	UpdatedAt string `json:"updated_at"` // RFC3339

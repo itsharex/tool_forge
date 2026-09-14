@@ -57,8 +57,8 @@ type DashboardReport struct {
 	Calendar         []DailyBucket    `json:"calendar"`
 	HourDistribution [24]int          `json:"hour_distribution"`
 	TokensByModel    []ModelTokens    `json:"tokens_by_model"`
-	TopProjects      []ProjectStat    `json:"top_projects"`   // 按消息数降序,前 8
-	TokenTrend       []DailyTokens    `json:"token_trend"`    // 近 30 天 token 走势
+	TopProjects      []ProjectStat    `json:"top_projects"` // 按消息数降序,前 8
+	TokenTrend       []DailyTokens    `json:"token_trend"`  // 近 30 天 token 走势
 	LongestSession   *SessionSummary  `json:"longest_session,omitempty"`
 	RecentSessions   []SessionSummary `json:"recent_sessions"`
 	CodexDir         string           `json:"codex_dir"`

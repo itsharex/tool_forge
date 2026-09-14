@@ -11,12 +11,12 @@ type DailyBucket struct {
 
 // ModelTokens 按模型聚合的 token 用量
 type ModelTokens struct {
-	Model                 string `json:"model"`
-	InputTokens           int64  `json:"input_tokens"`
-	OutputTokens          int64  `json:"output_tokens"`
-	CacheCreationTokens   int64  `json:"cache_creation_tokens"`
-	CacheReadTokens       int64  `json:"cache_read_tokens"`
-	Messages              int    `json:"messages"`
+	Model               string `json:"model"`
+	InputTokens         int64  `json:"input_tokens"`
+	OutputTokens        int64  `json:"output_tokens"`
+	CacheCreationTokens int64  `json:"cache_creation_tokens"`
+	CacheReadTokens     int64  `json:"cache_read_tokens"`
+	Messages            int    `json:"messages"`
 }
 
 // ProjectStats 按项目(cwd)聚合的用量,用于概览"按项目排行"。
@@ -110,9 +110,9 @@ type DashboardReport struct {
 	LastUsedAt    string `json:"last_used_at"`  // RFC3339
 
 	// --- 分布 ---
-	Last7Days        []DailyBucket `json:"last_7_days"`        // 按日期升序,固定 7 条
-	Calendar         []DailyBucket `json:"calendar"`           // 近 365 天有记录的天数;前端自己补齐空白
-	HourDistribution [24]int       `json:"hour_distribution"`  // 本地时区下每小时消息数
+	Last7Days        []DailyBucket `json:"last_7_days"`       // 按日期升序,固定 7 条
+	Calendar         []DailyBucket `json:"calendar"`          // 近 365 天有记录的天数;前端自己补齐空白
+	HourDistribution [24]int       `json:"hour_distribution"` // 本地时区下每小时消息数
 
 	// --- Token ---
 	TokensByModel []ModelTokens  `json:"tokens_by_model"` // 按总 token 量降序

@@ -36,17 +36,17 @@ const maxScanTokenSize = 8 * 1024 * 1024
 
 // sessionAccum 扫描单个 jsonl 累积的中间态
 type sessionAccum struct {
-	id          string
-	project     string
-	filePath    string
-	messages    int
-	firstTime   time.Time
-	lastTime    time.Time
-	preview     string
-	lastModel   string  // 最后一次 turn_context.model
-	cliVersion  string
-	hourDist    [24]int
-	perDay      map[string]int
+	id         string
+	project    string
+	filePath   string
+	messages   int
+	firstTime  time.Time
+	lastTime   time.Time
+	preview    string
+	lastModel  string // 最后一次 turn_context.model
+	cliVersion string
+	hourDist   [24]int
+	perDay     map[string]int
 	// token_count 事件 total_token_usage 的最后一次值——Codex 的 token 是 session 级 running total
 	tokens struct {
 		Input     int64

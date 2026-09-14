@@ -112,7 +112,7 @@ type anthropicEvent struct {
 		PartialJSON string `json:"partial_json"`
 		// StopReason 只在 message_delta 上有;max_tokens = 撞到上限被截断
 		StopReason string `json:"stop_reason"`
-		Citation  struct {
+		Citation   struct {
 			URL       string `json:"url"`
 			Title     string `json:"title"`
 			CitedText string `json:"cited_text"`

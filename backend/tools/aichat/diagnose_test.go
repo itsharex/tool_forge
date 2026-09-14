@@ -62,9 +62,9 @@ func TestStreamProbeTruncatesLongDump(t *testing.T) {
 func TestParseAnthropicStreamError(t *testing.T) {
 	cases := map[string]string{
 		`{"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}`: "overloaded_error: Overloaded",
-		`{"type":"error","error":{"type":"api_error"}}`:                              "api_error",
-		`{"type":"content_block_delta","delta":{"text":"hi"}}`:                       "",
-		`不是 JSON`:                                                                    "",
+		`{"type":"error","error":{"type":"api_error"}}`:                               "api_error",
+		`{"type":"content_block_delta","delta":{"text":"hi"}}`:                        "",
+		`不是 JSON`: "",
 	}
 	for payload, want := range cases {
 		if got := parseAnthropicStreamError(payload); got != want {

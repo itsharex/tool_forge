@@ -212,9 +212,10 @@ func (s *Service) SendChat(ctx context.Context, convID, userContent string, user
 }
 
 // RegenerateLast 重新生成最后一条 assistant 消息:
-//   1. 取消可能进行中的流
-//   2. 把最后一条 assistant 消息的内容/思考清空(沿用同一 ID,前端能原地刷新)
-//   3. 重新启动 runStream,流的产物写回这条 assistant
+//  1. 取消可能进行中的流
+//  2. 把最后一条 assistant 消息的内容/思考清空(沿用同一 ID,前端能原地刷新)
+//  3. 重新启动 runStream,流的产物写回这条 assistant
+//
 // 要求最后一条是 assistant 且前一条是 user
 func (s *Service) RegenerateLast(ctx context.Context, convID string) (*Conversation, error) {
 	c, err := loadConversation(convID)
@@ -761,9 +762,9 @@ func isCanceledErr(err error) bool {
 }
 
 // contextMessages 计算"参与本次请求"的消息切片:
-//   1. 跳过最后一个 role=clear 之前的所有消息(分隔线后才是当前会话上下文)
-//   2. 再按 conv.ContextCount 限制最近 N 条 user/assistant
-//   3. clear 标记本身从不发给模型,各 build 函数也会显式跳过
+//  1. 跳过最后一个 role=clear 之前的所有消息(分隔线后才是当前会话上下文)
+//  2. 再按 conv.ContextCount 限制最近 N 条 user/assistant
+//  3. clear 标记本身从不发给模型,各 build 函数也会显式跳过
 //
 // system 消息独立处理(各协议 build 函数把 conv.System 放到顶层),不算 contextCount
 func contextMessages(conv Conversation) []Message {

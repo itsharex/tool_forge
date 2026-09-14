@@ -17,13 +17,13 @@ import (
 // ModuleStorage 单个工具模块在 ~/.toolforge 下的占用情况;
 // 数据页"模块占用"区按这个列表渲染,不在前端硬编码模块清单
 type ModuleStorage struct {
-	Key     string `json:"key"`     // 稳定标识(供前端图标/i18n 用)
-	Label   string `json:"label"`   // 中文展示名
-	Path    string `json:"path"`    // 完整路径(可能是目录或单文件)
-	IsDir   bool   `json:"isDir"`   // true=目录,false=单文件
-	Bytes   int64  `json:"bytes"`   // 占用字节
-	Files   int    `json:"files"`   // 文件数(单文件 = 1)
-	Exists  bool   `json:"exists"`  // 路径是否存在(不存在仍展示为 0)
+	Key     string `json:"key"`               // 稳定标识(供前端图标/i18n 用)
+	Label   string `json:"label"`             // 中文展示名
+	Path    string `json:"path"`              // 完整路径(可能是目录或单文件)
+	IsDir   bool   `json:"isDir"`             // true=目录,false=单文件
+	Bytes   int64  `json:"bytes"`             // 占用字节
+	Files   int    `json:"files"`             // 文件数(单文件 = 1)
+	Exists  bool   `json:"exists"`            // 路径是否存在(不存在仍展示为 0)
 	SubInfo string `json:"subInfo,omitempty"` // 额外信息,如"32 张图片"/"5 个会话"
 }
 
@@ -283,8 +283,8 @@ func ExportData(ctx context.Context, localStorageJSON string) (string, error) {
 }
 
 // ImportData 让用户选 zip,然后:
-//   1. 把 zip 里 toolforge/* 解到 ~/.toolforge(覆盖)
-//   2. 把 zip 里 localstorage.json 内容直接返回给前端,前端自行写回 localStorage
+//  1. 把 zip 里 toolforge/* 解到 ~/.toolforge(覆盖)
+//  2. 把 zip 里 localstorage.json 内容直接返回给前端,前端自行写回 localStorage
 //
 // 返回值: (localStorageJSON string, error)。用户取消选文件时返回 ("","")。
 // 调用方应该提前 Stop 各 service 避免文件锁。

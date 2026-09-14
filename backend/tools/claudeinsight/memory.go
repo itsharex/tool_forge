@@ -18,7 +18,7 @@ import (
 
 // MemoryProject 一个含 memory/ 笔记的项目
 type MemoryProject struct {
-	Project   string `json:"project"`    // projects 下的目录名(编码后的 cwd)
+	Project   string `json:"project"` // projects 下的目录名(编码后的 cwd)
 	FileCount int    `json:"file_count"`
 	HasIndex  bool   `json:"has_index"` // 是否有 MEMORY.md
 	UpdatedAt string `json:"updated_at"`

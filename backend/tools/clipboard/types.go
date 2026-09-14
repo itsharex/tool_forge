@@ -13,10 +13,10 @@ const (
 type Item struct {
 	ID          string   `json:"id"`
 	Kind        ItemKind `json:"kind"`
-	Text        string   `json:"text,omitempty"`        // 文本内容
-	Preview     string   `json:"preview,omitempty"`     // 列表展示用的截断预览（前 280 字）
-	ImagePath   string   `json:"imagePath,omitempty"`   // 原图磁盘路径
-	Thumbnail   string   `json:"thumbnail,omitempty"`   // dataURL 缩略图
+	Text        string   `json:"text,omitempty"`      // 文本内容
+	Preview     string   `json:"preview,omitempty"`   // 列表展示用的截断预览（前 280 字）
+	ImagePath   string   `json:"imagePath,omitempty"` // 原图磁盘路径
+	Thumbnail   string   `json:"thumbnail,omitempty"` // dataURL 缩略图
 	ImageWidth  int      `json:"imageWidth,omitempty"`
 	ImageHeight int      `json:"imageHeight,omitempty"`
 	SizeBytes   int      `json:"sizeBytes"`

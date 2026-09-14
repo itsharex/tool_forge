@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
-	clipx "golang.design/x/clipboard"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	clipx "golang.design/x/clipboard"
 )
 
 // EventNew 新增条目时通过 Wails emit 给前端
