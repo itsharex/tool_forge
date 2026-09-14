@@ -72,10 +72,13 @@ type Manager struct {
 	mu       sync.Mutex
 	sessions map[string]*Session
 	seq      int
+	// snaps 每个目录上一次的样子,给 Diff 用。
+	// 设备上没有 inotify 一类的东西,变化只能靠两张快照对比出来
+	snaps *snapshots
 }
 
 func NewManager() *Manager {
-	return &Manager{sessions: map[string]*Session{}}
+	return &Manager{sessions: map[string]*Session{}, snaps: newSnapshots()}
 }
 
 // ConnectOptions 连接参数

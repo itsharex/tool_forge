@@ -122,6 +122,10 @@ func NewApp() *App {
 	// 账号都在里面。agent 自己既遍历不动,也没法在不改动证据的前提下打开它们
 	api.Register(sqlitex.NewSearchHandler())
 	api.Register(sqlitex.NewReadHandler())
+	// 真机浏览:agent 能直接看设备上的文件,不用先导出。
+	// 和界面共用同一个 Manager —— 用户在界面上连着的那条,agent 接着用就是了。
+	// 密码只从凭据库取,不做成入参(MCP 的入参会进 agent 的对话记录)
+	api.Register(devicefs.NewHandler(dfs, system.GetPassword, devicefs.DefaultCacheDir()))
 	// Outlook 邮箱管理:加密存储 + 定时刷新 worker
 	outlk, _ := outlookmail.New()
 	// LLM 透明代理 + 日志:打开 SQLite 存储,读配置(startup 里按配置决定是否监听)
