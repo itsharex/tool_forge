@@ -256,11 +256,11 @@ func TestUntarReportsRenames(t *testing.T) {
 // /sdcard/Download 和 /sdcard/Downloads 前缀上是包含关系,位置上却毫无关系 ——
 // 按前缀比会把后一个整个当成前一个的子目录漏掉
 func TestContainedIn(t *testing.T) {
-	list := []string{"/sdcard/Download", "/data/user/0/com.taobao.idlefish"}
+	list := []string{"/sdcard/Download", "/data/user/0/com.example.chat"}
 	yes := []string{
 		"/sdcard/Download",
 		"/sdcard/Download/a.txt",
-		"/data/user/0/com.taobao.idlefish/databases",
+		"/data/user/0/com.example.chat/databases",
 	}
 	for _, p := range yes {
 		if _, ok := containedIn(p, list); !ok {
@@ -270,7 +270,7 @@ func TestContainedIn(t *testing.T) {
 	no := []string{
 		"/sdcard/Downloads",
 		"/sdcard/Download2/x",
-		"/data/user/0/com.taobao.idlefish2",
+		"/data/user/0/com.example.chat2",
 		"/sdcard",
 	}
 	for _, p := range no {

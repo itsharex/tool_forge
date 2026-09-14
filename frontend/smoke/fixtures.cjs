@@ -560,7 +560,7 @@ const sqliteSearch = {
   skipped: [{ file: 'databases/broken.db', reason: '文件损坏' }],
   hits: [
     {
-      file: 'data/user/0/com.taobao.idlefish/databases/im.db',
+      file: 'data/user/0/com.example.chat/databases/im.db',
       table: 'messages',
       column: 'content',
       keyword: '收款',
@@ -573,7 +573,7 @@ const sqliteSearch = {
       ],
     },
     {
-      file: 'data/user/0/com.taobao.idlefish/databases/im.db',
+      file: 'data/user/0/com.example.chat/databases/im.db',
       table: 'session',
       column: 'summary',
       keyword: '收款',

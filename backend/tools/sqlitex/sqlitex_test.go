@@ -387,3 +387,40 @@ func mustExec(t *testing.T, db *sql.DB, q string) {
 		t.Fatal(fmt.Errorf("%s: %w", q, err))
 	}
 }
+
+// 只给一个库文件时,命中里的相对路径必须是文件名,不能是 "."。
+//
+// 界面上那是一个点,而且点开还会拿它去拼路径,拼出来根本不存在
+func TestSingleFileHitPathIsTheFileName(t *testing.T) {
+	dir := t.TempDir()
+	p := makeDB(t, dir, "one.db", false)
+	res, err := Search(context.Background(), SearchOptions{Root: p, Keywords: []string{"明天"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Hits) == 0 {
+		t.Fatal("没搜到")
+	}
+	for _, h := range res.Hits {
+		if h.File != "one.db" {
+			t.Errorf("命中路径该是文件名,得到 %q", h.File)
+		}
+	}
+	// base 要指向文件所在的目录,前端靠它把相对路径拼回绝对路径
+	if res.Base != dir {
+		t.Errorf("base 该是 %q,得到 %q", dir, res.Base)
+	}
+	// 给目录时 base 就是它自己
+	res2, err := Search(context.Background(), SearchOptions{Root: dir, Keywords: []string{"明天"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res2.Base != dir {
+		t.Errorf("给目录时 base 该是 %q,得到 %q", dir, res2.Base)
+	}
+	for _, h := range res2.Hits {
+		if h.File != "one.db" {
+			t.Errorf("给目录时命中路径也该是 one.db,得到 %q", h.File)
+		}
+	}
+}

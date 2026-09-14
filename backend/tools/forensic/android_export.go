@@ -310,7 +310,7 @@ func clearDir(dir string, log func(string, ...any)) error {
 // safeToClear 拦住那些一看就会闯祸的清空目标。
 //
 // 盘符根、文件系统根是底线 —— 路径少打几个字就会变成它们,
-// 而"清空 D:\"和"清空 D:\exhibits\案件一"在代码里长得一模一样
+// 而"清空 D:\"和"清空 D:\取证\案件编号"在代码里长得一模一样
 func safeToClear(dir string) error {
 	abs, err := filepath.Abs(dir)
 	if err != nil {

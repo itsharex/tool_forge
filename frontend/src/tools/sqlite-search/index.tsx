@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { AlertTriangle, FolderOpen, Search } from 'lucide-react'
+import { AlertTriangle, FileSearch, FolderOpen, Search } from 'lucide-react'
 import { ToolShell } from '@/components/tool/ToolShell'
 import { Button } from '@/components/ui/button'
-import { PickDirectory, SearchSQLite } from '../../../wailsjs/go/main/App'
+import { PickDirectory, PickLocalFile, SearchSQLite } from '../../../wailsjs/go/main/App'
 import type { sqlitex } from '../../../wailsjs/go/models'
 import { HitList } from './HitList'
 import { TableViewer } from './TableViewer'
@@ -21,8 +21,15 @@ export default function SQLiteSearch() {
   const list = splitKeywords(keywords)
   const canRun = !running && root.trim().length > 0 && list.length > 0
 
-  const pick = async () => {
+  const pickDir = async () => {
     const p = await PickDirectory('选择取证导出目录', root).catch(() => '')
+    if (p) setRoot(p)
+  }
+
+  // 单个库也得能选。只给目录选择器的话,想搜一个 .db 就只能手动粘路径 ——
+  // 而标签上明明写着可以给文件
+  const pickFile = async () => {
+    const p = await PickLocalFile('选择 SQLite 数据库文件').catch(() => '')
     if (p) setRoot(p)
   }
 
@@ -40,10 +47,13 @@ export default function SQLiteSearch() {
     }
   }
 
-  // 命中里给的是相对路径,打开表要绝对路径
+  // 命中里给的是相对路径,打开表要绝对路径。
+  // 基准用后端给的 base 而不是输入框里的 root —— 选的是单个文件时,
+  // 相对路径是相对它所在目录算的,拿 root 去拼会多出一层
   const openTable = (file: string, table: string) => {
-    const sep = root.includes('\\') ? '\\' : '/'
-    const full = root.replace(/[\\/]$/, '') + sep + file.split('/').join(sep)
+    const base = res?.base || root
+    const sep = base.includes('\\') ? '\\' : '/'
+    const full = base.replace(/[\\/]$/, '') + sep + file.split('/').join(sep)
     setViewing({ path: full, table })
   }
 
@@ -60,18 +70,26 @@ export default function SQLiteSearch() {
       <div className="flex flex-col gap-4">
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Field label="导出目录 / 数据库文件" required>
+            <Field
+              label="搜哪儿"
+              required
+              hint="给目录就把里面所有数据库都搜一遍；也可以只给一个数据库文件"
+            >
               <div className="flex gap-2">
                 <input
                   value={root}
                   onChange={(e) => setRoot(e.target.value)}
-                  placeholder="D:\exhibits\..."
+                  placeholder="D:\取证\案件编号\设备导出"
                   spellCheck={false}
                   className="h-9 flex-1 rounded-md border border-input bg-background px-3 font-mono text-sm outline-none focus:ring-1 focus:ring-ring"
                 />
-                <Button variant="outline" size="sm" onClick={pick} type="button">
+                <Button variant="outline" size="sm" onClick={pickDir} type="button">
                   <FolderOpen className="h-3.5 w-3.5" />
-                  浏览
+                  选目录
+                </Button>
+                <Button variant="outline" size="sm" onClick={pickFile} type="button">
+                  <FileSearch className="h-3.5 w-3.5" />
+                  选文件
                 </Button>
               </div>
             </Field>
@@ -92,7 +110,7 @@ export default function SQLiteSearch() {
 
           <div className="mt-3 flex items-center gap-3">
             <p className="text-[11px] text-muted-foreground">
-              按文件头识别数据库，不看扩展名；读取不会改动原始文件
+              按文件头识别数据库（不看扩展名，安卓和 iOS 上很多库没有扩展名）；读取不会改动原始文件
             </p>
             <Button className="ml-auto" onClick={run} disabled={!canRun}>
               <Search className="h-3.5 w-3.5" />

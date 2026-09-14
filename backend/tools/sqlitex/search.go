@@ -48,6 +48,12 @@ type SearchOptions struct {
 // SearchResult 搜索结果
 type SearchResult struct {
 	Hits []Hit `json:"hits"`
+	// Base 命中里那些相对路径是相对谁的。
+	//
+	// Root 给的是目录时就是它自己;给的是单个文件时是那个文件所在的目录 ——
+	// 不区分的话,单文件那次每条命中的相对路径都会是 ".",
+	// 界面上显示成一个点,点开还会拼出一条不存在的路径
+	Base string `json:"base"`
 	// Files 扫了多少个库
 	Files int `json:"files"`
 	// Skipped 打不开的库,以及为什么
@@ -101,7 +107,11 @@ func Search(ctx context.Context, opt SearchOptions) (*SearchResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	res := &SearchResult{Hits: []Hit{}, Skipped: []SkippedFile{}, Files: len(files)}
+	base, err := baseDir(opt.Root)
+	if err != nil {
+		return nil, err
+	}
+	res := &SearchResult{Hits: []Hit{}, Skipped: []SkippedFile{}, Files: len(files), Base: base}
 
 	var (
 		mu   sync.Mutex
@@ -113,11 +123,11 @@ func Search(ctx context.Context, opt SearchOptions) (*SearchResult, error) {
 		go func() {
 			defer wg.Done()
 			for f := range jobs {
-				hits, err := searchOne(ctx, f, opt.Root, keywords, opt)
+				hits, err := searchOne(ctx, f, base, keywords, opt)
 				mu.Lock()
 				if err != nil {
 					res.Skipped = append(res.Skipped, SkippedFile{
-						File: relTo(opt.Root, f), Reason: err.Error(),
+						File: relTo(base, f), Reason: err.Error(),
 					})
 				} else {
 					for _, h := range hits {
@@ -316,6 +326,19 @@ func collectDBs(ctx context.Context, root string) ([]string, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+// baseDir 相对路径以谁为基准。
+// Root 是文件时用它所在的目录,这样命中的相对路径就是文件名本身
+func baseDir(root string) (string, error) {
+	st, err := os.Stat(root)
+	if err != nil {
+		return "", err
+	}
+	if st.IsDir() {
+		return root, nil
+	}
+	return filepath.Dir(root), nil
 }
 
 func relTo(root, p string) string {

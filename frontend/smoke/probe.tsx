@@ -172,6 +172,19 @@ const mustClick = async (label: string) => {
   if (!(await click(label))) throw new Error('找不到按钮「' + label + '」')
 }
 
+/**
+ * 往一个必须存在的输入框里打字。
+ *
+ * type 找不到框时只是返回 false,不报错 —— 于是占位符一改,
+ * 用例就在一个没填过的表单上继续跑,后面的断言全是空对空。
+ * 这条用例本身就是这么红的,所以给它一个会喊的版本
+ */
+const mustType = async (placeholder: string, value: string) => {
+  if (!(await type(placeholder, value))) {
+    throw new Error('找不到输入框「' + placeholder + '」')
+  }
+}
+
 async function main() {
   // 1) 每条 fixture 会话过一遍消息渲染(老格式思考 / 富消息 / 空会话)
   for (const c of conversations as { id: string; title: string }[]) {
@@ -547,8 +560,8 @@ async function main() {
   // 而它们在渲染里长得和普通字符串不一样。fixture 里各放了一条
   await mount('SQLite 搜索', <MemoryRouter><SQLiteSearch /></MemoryRouter>, async () => {
     const txt = () => document.body.textContent || ''
-    await type('exhibits', 'D:/exhibits/案件一')
-    await type('13800138000', '收款')
+    await mustType('案件编号', 'D:/取证/示例')
+    await mustType('13800138000', '收款')
     await mustClick('搜索')
 
     if (!txt().includes('扫了')) throw new Error('没有汇总行')

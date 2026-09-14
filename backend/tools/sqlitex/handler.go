@@ -69,7 +69,7 @@ func (h *SearchHandler) InputSchema() map[string]any {
 		},
 		"examples": []any{
 			map[string]any{
-				"root":     `D:\exhibits\案件一\闲鱼-android`,
+				"root":     `D:\cases\0001\android-export`,
 				"keywords": []string{"13800138000"},
 			},
 		},
@@ -151,8 +151,12 @@ func (h *ReadHandler) InputSchema() map[string]any {
 			},
 		},
 		"examples": []any{
-			map[string]any{"path": `D:\exhibits\a\databases\EnMicroMsg.db`},
-			map[string]any{"path": `D:\exhibits\a\databases\EnMicroMsg.db`, "table": "message", "limit": 50},
+			map[string]any{"path": `D:\cases\0001\android-export\databases\app.db`},
+			map[string]any{
+				"path":  `D:\cases\0001\android-export\databases\app.db`,
+				"table": "message",
+				"limit": 50,
+			},
 		},
 	}
 }
