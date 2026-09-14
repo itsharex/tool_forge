@@ -7,6 +7,9 @@ import { meta as mobileForensicMeta } from './mobile-forensic/meta'
 import DeviceBrowser from './device-browser'
 import { meta as deviceBrowserMeta } from './device-browser/meta'
 
+import SQLiteSearch from './sqlite-search'
+import { meta as sqliteSearchMeta } from './sqlite-search/meta'
+
 import AppSearch from './app-search'
 import { meta as appSearchMeta } from './app-search/meta'
 
@@ -135,6 +138,7 @@ export interface ToolEntry {
 export const tools: ToolEntry[] = [
   { meta: mobileForensicMeta, Component: MobileForensic },
   { meta: deviceBrowserMeta, Component: DeviceBrowser },
+  { meta: sqliteSearchMeta, Component: SQLiteSearch },
   { meta: appSearchMeta, Component: AppSearch },
   { meta: jsonEditorMeta, Component: JsonEditor },
   { meta: plistMeta, Component: Plist },

@@ -116,12 +116,12 @@ func (m *Manager) classify(p *Preview, s *Session, remote string, head []byte) {
 		p.parsePlist()
 
 	case len(head) >= 15 && string(head[:15]) == "SQLite format 3":
-		// 只认出来,不解析 —— 这个工具里没有 SQLite 浏览器。
-		// 但把它认出来本身就有价值:iOS 上通讯录、短信、账号全在 sqlite 里,
-		// 而它们的文件名经常看不出这一点
+		// 认出来本身就有价值:iOS 上通讯录、短信、账号全在 sqlite 里,
+		// 而它们的文件名经常看不出这一点。
+		// 内容由前端拿 LocalPath 去读 —— 那份副本已经在本地了,
+		// 而 sqlitex 保证读的时候不会改动它
 		p.Kind, p.Why = "sqlite", "文件头是 SQLite format 3"
-		p.Note = "SQLite 数据库。这个工具没带表浏览器,先拉到本地再用别的工具打开"
-		p.Hex = hexHead(p.LocalPath)
+		p.Note = "SQLite 数据库,下面直接翻表"
 
 	case m.looksLikeMMKV(s, remote):
 		p.Kind, p.Why = "mmkv", "旁边有同名的 .crc 文件,这是 MMKV 的落盘特征"

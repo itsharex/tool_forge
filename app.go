@@ -38,6 +38,7 @@ import (
 	"tool_forge/backend/tools/plist"
 	"tool_forge/backend/tools/protobuf"
 	"tool_forge/backend/tools/providerswitch"
+	"tool_forge/backend/tools/sqlitex"
 	"tool_forge/backend/updater"
 )
 
@@ -117,6 +118,10 @@ func NewApp() *App {
 	// plist:iOS 上大半配置都是二进制 bplist,cat 出来是乱码;
 	// 套着 NSKeyedArchiver 的还得顺着 UID 把对象表拼回去
 	api.Register(plist.NewHandler())
+	// SQLite:取证导出里几千个文件中往往有几十个库,而聊天记录、通讯录、
+	// 账号都在里面。agent 自己既遍历不动,也没法在不改动证据的前提下打开它们
+	api.Register(sqlitex.NewSearchHandler())
+	api.Register(sqlitex.NewReadHandler())
 	// Outlook 邮箱管理:加密存储 + 定时刷新 worker
 	outlk, _ := outlookmail.New()
 	// LLM 透明代理 + 日志:打开 SQLite 存储,读配置(startup 里按配置决定是否监听)
@@ -2195,4 +2200,49 @@ func (a *App) ListOutlookRefreshHistory() []outlookmail.RefreshJobState {
 		return nil
 	}
 	return a.outlook.Jobs().History()
+}
+
+// ================ SQLite ================
+//
+// 取证导出里通常有几十个 SQLite 库,聊天记录、通讯录、账号都在里面。
+// 这几个方法背后统一走 sqlitex,那里保证不改动原始文件 ——
+// 打开一个旁边带 -wal 的库,SQLite 默认会把 WAL 回放进主库,
+// 也就是"看一眼"就改了证据。
+
+// SearchSQLite 在一个目录树(或单个文件)里按关键词搜所有 SQLite 库
+func (a *App) SearchSQLite(opt sqlitex.SearchOptions) (*sqlitex.SearchResult, error) {
+	return sqlitex.Search(a.ctx, opt)
+}
+
+// ListSQLiteTables 列出一个库里的表。
+//
+// 出错时返回的是空切片而不是 nil:Wails 只把第一个返回值给 JS,
+// nil 到了那头是 null,前端再 .length 就是整页白屏
+func (a *App) ListSQLiteTables(path string) ([]sqlitex.Table, error) {
+	empty := []sqlitex.Table{}
+	db, err := sqlitex.Open(path)
+	if err != nil {
+		return empty, err
+	}
+	defer db.Close()
+	tables, err := db.Tables(a.ctx)
+	if err != nil {
+		return empty, err
+	}
+	return tables, nil
+}
+
+// ReadSQLiteRows 翻一张表的数据
+func (a *App) ReadSQLiteRows(path, table string, offset, limit int) (*sqlitex.Page, error) {
+	db, err := sqlitex.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	return db.Rows(a.ctx, table, offset, limit)
+}
+
+// IsSQLiteFile 一个文件是不是 SQLite 库。按文件头认,不看扩展名
+func (a *App) IsSQLiteFile(path string) bool {
+	return sqlitex.IsSQLite(path)
 }

@@ -24,6 +24,7 @@ import MmkvTool from '../src/tools/mmkv/index'
 import PlistTool from '../src/tools/plist/index'
 import DeviceBrowser from '../src/tools/device-browser/index'
 import MobileForensic from '../src/tools/mobile-forensic/index'
+import SQLiteSearch from '../src/tools/sqlite-search/index'
 import { ConfirmProvider } from '../src/components/ui/confirm'
 import { conversations } from './fixtures.cjs'
 // 直接引桩本体拿事件把手。build.cjs 只把含 "wailsjs" 的路径重定向到这里,
@@ -537,6 +538,37 @@ async function main() {
     await mustClick('改用内置引擎')
     if (txt().includes('这次的选择需要 go-forensic')) {
       throw new Error('点了「改用内置引擎」还没退回来 —— 那就成死路了')
+    }
+  })
+
+  // 20) SQLite 搜索:命中要给出整行,读不了的库要摆出来,点表名能翻表。
+  //
+  // 这一页最容易崩的地方是 NULL 和 BLOB —— 真实证据库里到处都是,
+  // 而它们在渲染里长得和普通字符串不一样。fixture 里各放了一条
+  await mount('SQLite 搜索', <MemoryRouter><SQLiteSearch /></MemoryRouter>, async () => {
+    const txt = () => document.body.textContent || ''
+    await type('exhibits', 'D:/exhibits/案件一')
+    await type('13800138000', '收款')
+    await mustClick('搜索')
+
+    if (!txt().includes('扫了')) throw new Error('没有汇总行')
+    if (!txt().includes('明天把收款码发我')) {
+      throw new Error('命中的那一行内容没画出来 —— 只报表名的话这个工具就没用了')
+    }
+    // 读不了的库必须摆出来:不说的话"没搜到"和"根本没打开"长得一模一样
+    if (!txt().includes('没读成')) throw new Error('跳过的库没有提示')
+
+    // 展开整行:NULL 那一格要显示成 NULL,不能是空白
+    await mustClick('展开整行（4 列）')
+    if (!txt().includes('NULL')) throw new Error('NULL 没标出来')
+
+    // 点表名进表浏览器
+    await mustClick('messages')
+    if (!txt().includes('broken_table')) throw new Error('表列表没画出来')
+    if (!txt().includes('读不了')) throw new Error('读不出列的表没标出来')
+    if (!txt().includes('共 128')) throw new Error('总行数没显示')
+    if (!txt().includes('BLOB') && !txt().includes('0x0001')) {
+      throw new Error('BLOB 没画出来')
     }
   })
 

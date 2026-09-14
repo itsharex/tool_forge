@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { devicefs } from '../../../wailsjs/go/models'
 import { defaultTypeOf, displayOf } from '../mmkv/valueTypes'
+import { TableViewer } from '../sqlite-search/TableViewer'
 
 /**
  * 预览面板。按后端给的 kind 决定画什么。
@@ -92,6 +93,15 @@ export function PreviewPane({
 }
 
 function Body({ preview }: { preview: devicefs.Preview }) {
+  // SQLite 直接翻表。文件已经拉到本地了,读的是那份副本 ——
+  // 原库在设备上,怎么都碰不到
+  if (preview.kind === 'sqlite' && preview.localPath) {
+    return (
+      <div className="h-[420px]">
+        <TableViewer path={preview.localPath} />
+      </div>
+    )
+  }
   if (preview.plist) {
     return <Mono>{safeJson(preview.plist.parsed)}</Mono>
   }

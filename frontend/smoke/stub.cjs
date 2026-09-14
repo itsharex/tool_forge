@@ -135,6 +135,11 @@ const special = {
   ExportDeviceFile: () => Promise.resolve('D:/导出/com.apple.springboard.plist'),
   PickDirectory: () => Promise.resolve('D:/导出'),
 
+  // ---- SQLite ----
+  SearchSQLite: () => Promise.resolve(fx.sqliteSearch),
+  ListSQLiteTables: () => Promise.resolve(fx.sqliteTables),
+  ReadSQLiteRows: () => Promise.resolve(fx.sqlitePage),
+
   // ---- 运行时事件 ----
   EventsOn: on,
   EventsOnMultiple: (name, cb) => on(name, cb),

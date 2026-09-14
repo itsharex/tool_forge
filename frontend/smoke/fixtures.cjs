@@ -547,6 +547,69 @@ const deviceSearch = {
   ],
 }
 
+// ---- SQLite 搜索 ----
+//
+// 形状照着 sqlitex 那边的返回来:命中给的是**整行**,不只是"哪张表有"。
+// 这里特意放了一条 NULL 和一条 BLOB —— 这两种在真实证据库里到处都是,
+// 而它们正是最容易把渲染写崩的地方
+const sqliteCols = ['id', 'sender', 'content', 'payload']
+const sqliteSearch = {
+  files: 3,
+  truncated: false,
+  elapsedMs: 412,
+  skipped: [{ file: 'databases/broken.db', reason: '文件损坏' }],
+  hits: [
+    {
+      file: 'data/user/0/com.taobao.idlefish/databases/im.db',
+      table: 'messages',
+      column: 'content',
+      keyword: '收款',
+      columns: sqliteCols,
+      row: [
+        { text: '1' },
+        { text: '张三' },
+        { text: '明天把收款码发我' },
+        { null: true, text: '' },
+      ],
+    },
+    {
+      file: 'data/user/0/com.taobao.idlefish/databases/im.db',
+      table: 'session',
+      column: 'summary',
+      keyword: '收款',
+      columns: sqliteCols,
+      row: [
+        { text: '2' },
+        { text: '李四' },
+        { text: '收款成功' },
+        { text: '0x0001FFFE…', blob: true, size: 64 },
+      ],
+    },
+  ],
+}
+
+const sqliteTables = [
+  { name: 'messages', columns: sqliteCols, rows: 128 },
+  { name: 'session', columns: sqliteCols, rows: 7 },
+  // 读不出来的表也要能画出来,不能因为它 columns 是空的就崩
+  { name: 'broken_table', columns: [], rows: -1, err: '没有列' },
+]
+
+const sqlitePage = {
+  columns: sqliteCols,
+  total: 128,
+  offset: 0,
+  rows: [
+    [{ text: '1' }, { text: '张三' }, { text: '明天把收款码发我' }, { null: true, text: '' }],
+    [
+      { text: '2' },
+      { text: '李四' },
+      { text: '收款成功' },
+      { text: '0x0001FFFE…', blob: true, size: 64 },
+    ],
+  ],
+}
+
 module.exports = {
   searchResults,
   providers,
@@ -566,4 +629,7 @@ module.exports = {
   devicePreviewPlist,
   devicePreviewEmptyMmkv,
   deviceSearch,
+  sqliteSearch,
+  sqliteTables,
+  sqlitePage,
 }
