@@ -657,6 +657,10 @@ module.exports.aiConfigSnapshot = {
       name: 'exa', kind: 'http', url: 'https://x/mcp', enabled: false, toggleable: true, id: 's2',
       source: { file: 'C:\\Users\\u\\.toolforge\\mcp\\servers.json', origin: 'toolforge', scope: '全局' },
     },
+    {
+      name: 'chrome-mcp-stdio', kind: 'stdio', command: 'npx', enabled: true, toggleable: false,
+      source: { file: 'C:\\Users\\u\\.gemini\\settings.json', origin: 'gemini', scope: '全局' },
+    },
   ],
   skills: [
     {
@@ -673,6 +677,12 @@ module.exports.aiConfigSnapshot = {
       name: '缺文档的', dir: 'C:\\Users\\u\\.codex\\skills\\x', fileCount: 1, hasSkillMd: false,
       source: { file: 'C:\\Users\\u\\.codex\\skills', origin: 'codex', scope: '全局' },
     },
+    {
+      // Continue 的 skills 全是指向共享池的软链 —— 不标出来会被当成独立的一份
+      name: 'lark-doc', description: '飞书文档', dir: 'C:\\Users\\u\\.continue\\skills\\lark-doc',
+      fileCount: 2, hasSkillMd: true, linkTarget: 'C:\\Users\\u\\.agents\\skills\\lark-doc',
+      source: { file: 'C:\\Users\\u\\.continue\\skills', origin: 'continue', scope: '全局' },
+    },
   ],
   plugins: [
     {
@@ -687,5 +697,17 @@ module.exports.aiConfigSnapshot = {
   ],
   problems: [
     { file: 'C:\\Users\\u\\.codex\\broken.toml', detail: '解析失败: 第 3 行' },
+  ],
+  // 每家一条,含没装的 —— 来源墙要能把「未安装」和「装了没配」区分开
+  origins: [
+    { origin: 'claude', present: true, root: 'C:\\Users\\u\\.claude', mcp: 2, skills: 2, plugins: 2 },
+    { origin: 'codex', present: true, root: 'C:\\Users\\u\\.codex', mcp: 1, skills: 1, plugins: 0 },
+    { origin: 'gemini', present: true, root: 'C:\\Users\\u\\.gemini', mcp: 1, skills: 0, plugins: 0 },
+    { origin: 'cline', present: true, root: 'C:\\Users\\u\\AppData\\Roaming\\Code', mcp: 0, skills: 0, plugins: 0 },
+    { origin: 'continue', present: true, root: 'C:\\Users\\u\\.continue', mcp: 0, skills: 1, plugins: 0 },
+    { origin: 'trae', present: false, root: 'C:\\Users\\u\\.trae', mcp: 0, skills: 0, plugins: 0 },
+    { origin: 'cursor', present: false, root: 'C:\\Users\\u\\.cursor', mcp: 0, skills: 0, plugins: 0 },
+    { origin: 'toolforge', present: true, root: 'C:\\Users\\u\\.toolforge', mcp: 1, skills: 0, plugins: 0 },
+    { origin: 'shared', present: true, root: 'C:\\Users\\u\\.agents', mcp: 0, skills: 1, plugins: 0 },
   ],
 }

@@ -36,34 +36,161 @@ func Scan(h Home) (*Snapshot, error) {
 		Skills:   []SkillEntry{},
 		Plugins:  []PluginEntry{},
 		Problems: []Problem{},
+		Origins:  []OriginInfo{},
 		Roots:    []string{},
 	}
 
 	claudeDir := filepath.Join(home, ".claude")
 	codexDir := filepath.Join(home, ".codex")
 	claudeJSON := filepath.Join(home, ".claude.json")
+	geminiDir := filepath.Join(home, ".gemini")
+	continueDir := filepath.Join(home, ".continue")
+	traeDir := filepath.Join(home, ".trae")
+	cursorDir := filepath.Join(home, ".cursor")
+	// Cline 是 VS Code 扩展,配置跟着 VS Code 走,不在家目录
+	clineMCP := filepath.Join(h.appData(), "Code", "User", "globalStorage",
+		"saoudrizwan.claude-dev", "settings", "cline_mcp_settings.json")
 
-	for _, p := range []string{claudeJSON, claudeDir, codexDir, filepath.Join(home, ".toolforge")} {
-		if _, err := os.Stat(p); err == nil {
-			snap.Roots = append(snap.Roots, p)
+	// 每家的根:有没有这个目录决定它算不算"装了"
+	roots := []struct {
+		origin Origin
+		root   string
+	}{
+		{OriginToolForge, filepath.Join(home, ".toolforge")},
+		{OriginClaude, claudeDir},
+		{OriginCodex, codexDir},
+		{OriginGemini, geminiDir},
+		{OriginCline, filepath.Dir(clineMCP)},
+		{OriginContinue, continueDir},
+		{OriginTrae, traeDir},
+		{OriginCursor, cursorDir},
+		{OriginShared, filepath.Join(home, ".agents")},
+	}
+	for _, r := range roots {
+		_, err := os.Stat(r.root)
+		snap.Origins = append(snap.Origins, OriginInfo{Origin: r.origin, Present: err == nil, Root: r.root})
+		if err == nil {
+			snap.Roots = append(snap.Roots, r.root)
 		}
 	}
 
+	// MCP
 	scanClaudeJSON(snap, claudeJSON)
 	scanCodexTOML(snap, filepath.Join(codexDir, "config.toml"))
 	scanToolForgeMCP(snap, filepath.Join(home, ".toolforge", "mcp", "servers.json"))
+	scanMCPServersJSON(snap, filepath.Join(geminiDir, "settings.json"), OriginGemini)
+	scanMCPServersJSON(snap, clineMCP, OriginCline)
+	scanMCPServersJSON(snap, filepath.Join(continueDir, "config.json"), OriginContinue)
+	// Cursor / Trae 的 MCP 落在 mcp.json;本机没配,但文件一出现就该认
+	scanMCPServersJSON(snap, filepath.Join(cursorDir, "mcp.json"), OriginCursor)
+	scanMCPServersJSON(snap, filepath.Join(traeDir, "mcp.json"), OriginTrae)
 
-	scanSkillDir(snap, filepath.Join(claudeDir, "skills"), Source{
-		File: filepath.Join(claudeDir, "skills"), Origin: OriginClaude, Scope: "全局",
-	})
-	scanSkillDir(snap, filepath.Join(codexDir, "skills"), Source{
-		File: filepath.Join(codexDir, "skills"), Origin: OriginCodex, Scope: "全局",
-	})
+	// skills:各家目录结构一样,都是 <root>/skills/<name>/SKILL.md
+	for _, s := range []struct {
+		origin Origin
+		dir    string
+	}{
+		{OriginClaude, filepath.Join(claudeDir, "skills")},
+		{OriginCodex, filepath.Join(codexDir, "skills")},
+		{OriginGemini, filepath.Join(geminiDir, "skills")},
+		{OriginContinue, filepath.Join(continueDir, "skills")},
+		{OriginTrae, filepath.Join(traeDir, "skills")},
+		{OriginCursor, filepath.Join(cursorDir, "skills")},
+		// ~/.agents/skills 是个跨工具共享池,Continue / Trae 的 skills 全是指向它的软链。
+		// 也扫它本身:池里可能有还没被任何一家链过去的
+		{OriginShared, filepath.Join(home, ".agents", "skills")},
+	} {
+		scanSkillDir(snap, s.dir, Source{File: s.dir, Origin: s.origin, Scope: "全局"})
+	}
 
 	scanPlugins(snap, claudeDir)
 
+	tallyOrigins(snap)
 	sortSnapshot(snap)
 	return snap, nil
+}
+
+// appData Windows 的 %APPDATA%;别的平台给个等价位置,不至于路径拼出空串
+func (h Home) appData() string {
+	if v := os.Getenv("APPDATA"); v != "" && strings.TrimSpace(h.Dir) == "" {
+		return v
+	}
+	home, _ := h.resolve()
+	return filepath.Join(home, "AppData", "Roaming")
+}
+
+// tallyOrigins 每家各有几条。分组页的标题要用,也让"这家装了但什么都没配"能显示出来
+func tallyOrigins(snap *Snapshot) {
+	idx := map[Origin]int{}
+	for i, o := range snap.Origins {
+		idx[o.Origin] = i
+	}
+	for _, m := range snap.MCP {
+		if i, ok := idx[m.Source.Origin]; ok {
+			snap.Origins[i].MCP++
+		}
+	}
+	for _, s := range snap.Skills {
+		if i, ok := idx[s.Source.Origin]; ok {
+			snap.Origins[i].Skills++
+		}
+	}
+	for _, p := range snap.Plugins {
+		if i, ok := idx[p.Source.Origin]; ok {
+			snap.Origins[i].Plugins++
+		}
+	}
+}
+
+// mcpServersJSONShape 「顶层一个 mcpServers 对象」这种最常见的形状。
+// Gemini CLI 的 settings.json、Cline 的 cline_mcp_settings.json、Continue 的 config.json、
+// Cursor / Trae 的 mcp.json 都是它 —— 各家字段名略有出入(Gemini 多个 trust/timeout,
+// Cline 多个 disabled),只挑共有的那几个
+type mcpServersJSONShape struct {
+	MCPServers map[string]struct {
+		Type     string            `json:"type"`
+		Command  string            `json:"command"`
+		Args     []string          `json:"args"`
+		URL      string            `json:"url"`
+		Env      map[string]string `json:"env"`
+		Disabled bool              `json:"disabled"` // Cline 用这个表示停用
+	} `json:"mcpServers"`
+}
+
+func scanMCPServersJSON(snap *Snapshot, path string, origin Origin) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			snap.note(path, err.Error())
+		}
+		return
+	}
+	var parsed mcpServersJSONShape
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		snap.note(path, "解析失败: "+err.Error())
+		return
+	}
+	for name, s := range parsed.MCPServers {
+		kind := s.Type
+		if kind == "" {
+			if s.URL != "" {
+				kind = "http"
+			} else {
+				kind = "stdio"
+			}
+		}
+		snap.MCP = append(snap.MCP, MCPEntry{
+			Name:       name,
+			Kind:       kind,
+			Command:    s.Command,
+			Args:       s.Args,
+			URL:        s.URL,
+			EnvKeys:    sortedKeys(s.Env),
+			Enabled:    !s.Disabled,
+			Toggleable: false,
+			Source:     Source{File: path, Origin: origin, Scope: "全局"},
+		})
+	}
 }
 
 // ---- MCP ----
@@ -235,14 +362,25 @@ func scanSkillDir(snap *Snapshot, dir string, src Source) {
 		return
 	}
 	for _, e := range entries {
-		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
+		if strings.HasPrefix(e.Name(), ".") {
 			continue
 		}
 		skillDir := filepath.Join(dir, e.Name())
+		// 软链要跟过去看:Continue / Trae 的 skills 目录里全是指向 ~/.agents/skills
+		// 的软链,DirEntry.IsDir() 对软链报 false,不跟的话这两家永远是 0 个
+		info, err := os.Stat(skillDir)
+		if err != nil || !info.IsDir() {
+			continue
+		}
 		item := SkillEntry{
 			Name:   e.Name(),
 			Dir:    skillDir,
 			Source: src,
+		}
+		if e.Type()&os.ModeSymlink != 0 {
+			if real, err := filepath.EvalSymlinks(skillDir); err == nil {
+				item.LinkTarget = real
+			}
 		}
 		mdPath := filepath.Join(skillDir, "SKILL.md")
 		if b, err := os.ReadFile(mdPath); err == nil {
@@ -250,9 +388,7 @@ func scanSkillDir(snap *Snapshot, dir string, src Source) {
 			item.Description = frontmatterDescription(string(b))
 		}
 		item.FileCount = countFiles(skillDir)
-		if info, err := e.Info(); err == nil {
-			item.UpdatedAt = info.ModTime().Format("2006-01-02 15:04")
-		}
+		item.UpdatedAt = info.ModTime().Format("2006-01-02 15:04")
 		snap.Skills = append(snap.Skills, item)
 	}
 }

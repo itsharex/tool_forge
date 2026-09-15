@@ -61,14 +61,20 @@ const last = {}
 const special = {
   // ---- 本机 AI 配置 ----
   ScanAIConfig: () => Promise.resolve(fx.aiConfigSnapshot),
-  ReadAIConfigFile: (path) =>
-    Promise.resolve({
+  ReadAIConfigFile: (path) => {
+    // md 要带 frontmatter:预览得把它拆成元数据卡,而不是渲染成一条横线夹一坨字
+    const md =
+      '---\nname: git-commit-helper\ndescription: 提交助手\nallowed-tools:\n  - Read\n  - Grep\n---\n\n' +
+      '# 提交助手\n\n自动生成 commit message。\n\n- 第一步\n- 第二步\n'
+    const isMd = String(path).toLowerCase().endsWith('.md')
+    return Promise.resolve({
       path,
-      content: '{\n  "mcpServers": {}\n}\n',
+      content: isMd ? md : '{\n  "mcpServers": {}\n}\n',
       size: 24,
       updatedAt: '2026-09-15 10:00:00',
       editable: true,
-    }),
+    })
+  },
   SaveAIConfigFile: () => Promise.resolve(),
 
   // ---- 取证 / 包名搜索的配置 ----

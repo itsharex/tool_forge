@@ -20,7 +20,7 @@ import { ExportDialog } from '../src/tools/ai-chat/ExportDialog'
 import { TraceDialog } from '../src/tools/ai-chat/TraceDialog'
 import { GlobalSearchDialog } from '../src/tools/ai-chat/GlobalSearchDialog'
 import { DefaultsTab } from '../src/profile/sections/aichat/DefaultsTab'
-import { AIConfigSection } from '../src/profile/sections/AIConfig'
+import AIConfigTool from '../src/tools/ai-config/index'
 import { Profile } from '../src/profile'
 import MmkvTool from '../src/tools/mmkv/index'
 import PlistTool from '../src/tools/plist/index'
@@ -655,7 +655,7 @@ async function main() {
   await mount('设置页 · 每一栏都挂得上', <MemoryRouter><Profile /></MemoryRouter>, async () => {
     const labels = [
       '基础信息', '剪贴板', '快捷键', 'AI 配置', 'AI 用量',
-      'MCP 服务器', '本机 AI 配置', '本地 API', '数据', '关于',
+      'MCP 服务器', '本地 API', '数据', '关于',
     ]
     const txt = () => document.body.textContent || ''
     for (const label of labels) {
@@ -667,44 +667,76 @@ async function main() {
       await mustClick(label)
     }
 
-    // 停在新加的这一栏,确认内容是它而不是「即将推出」的占位
-    await mustClick('本机 AI 配置')
-    if (!txt().includes('每条都标着出自哪个文件')) {
-      throw new Error('点了「本机 AI 配置」但内容没出来 —— 多半是渲染分支没接上')
+    // 随便停在一栏,确认内容是真的而不是「即将推出」的占位
+    await mustClick('MCP 服务器')
+    if (!txt().includes('添加服务器')) {
+      throw new Error('点了「MCP 服务器」但内容没出来 —— 多半是渲染分支没接上')
     }
   })
 
   // 本机 AI 配置:一处看全三家的 MCP / skills / 插件。
   // 这一页的全部价值在「每条都标明出自哪个文件」——少了它就只是把四处混成一锅,
   // 看到一条不对劲的却不知道该去改哪儿,比分开看还难查
-  await mount('本机 AI 配置', <MemoryRouter><AIConfigSection /></MemoryRouter>, async () => {
+  await mount('本机 AI 配置', <MemoryRouter><AIConfigTool /></MemoryRouter>, async () => {
     const txt = () => document.body.textContent || ''
 
+    // 来源墙:每家一张卡,没装的也要在 —— 否则用户会以为漏扫了
+    for (const name of ['Claude Code', 'Codex', 'Gemini CLI', 'Cline', 'Continue', 'Trae', 'Cursor', '工具箱', '共享池']) {
+      if (!txt().includes(name)) throw new Error(`来源墙上少了「${name}」`)
+    }
+    if (!txt().includes('未安装')) throw new Error('没装的那家要标「未安装」,不能凭空消失')
+    if (!txt().includes('装了,没配东西')) throw new Error('装了但没配的那家要说清楚,不能和没装混在一起')
+
+    // 三种类型都列出来,而且每条都带来源和出处文件
     if (!txt().includes('acemcp')) throw new Error('没有列出 Claude 的 MCP')
     if (!txt().includes('node_repl')) throw new Error('没有列出 Codex 的 MCP')
-    if (!txt().includes('exa')) throw new Error('没有列出工具箱自己的 MCP')
-    // 三家混在一列里,不标来源一眼分不出谁是谁
-    if (!txt().includes('Codex') || !txt().includes('工具箱')) {
-      throw new Error('没有标出每条属于哪家')
-    }
-    // 出处文件是这一页存在的理由
+    if (!txt().includes('chrome-mcp-stdio')) throw new Error('没有列出 Gemini 的 MCP')
     if (!txt().includes('config.toml')) throw new Error('没有显示出处文件')
-    // 同名配在多处 —— 分开看时发现不了,正是要点破的
     if (!txt().includes('多处重复')) throw new Error('同名配在多处没有被标出来')
-    // 解析失败的文件不能默默跳过:它的表现和「这一处本来就是空的」一样
     if (!txt().includes('没读成')) throw new Error('解析失败的文件没有报出来')
-
-    await mustClick('Skills 3')
-    if (!txt().includes('插件 codex@openai-codex')) {
-      throw new Error('插件自带的 skill 没有标明出自哪个插件')
-    }
+    if (!txt().includes('插件 codex@openai-codex')) throw new Error('插件自带的 skill 没有标明出自哪个插件')
     if (!txt().includes('缺 SKILL.md')) throw new Error('没有 SKILL.md 的 skill 没被点出来')
+    if (!txt().includes('启用了但没装')) throw new Error('启用与安装状态对不上时没有点破')
+    // 软链要标:Continue 的 skills 全指向共享池,不标会被当成独立的一份
+    if (!txt().includes('软链')) throw new Error('软链 skill 没有标出真正指向哪里')
 
-    await mustClick('插件 2')
-    // 「装了」和「启用了」记在两个文件里,对不上时插件是静默不起作用的
-    if (!txt().includes('启用了但没装')) {
-      throw new Error('启用与安装状态对不上时没有点破 —— 那种插件是静默失效的')
-    }
+    // 点一家只看它的
+    await mustClick('Gemini CLI')
+    if (txt().includes('acemcp')) throw new Error('选了 Gemini 还在显示 Claude 的 MCP')
+    if (!txt().includes('chrome-mcp-stdio')) throw new Error('选了 Gemini 却没显示它的 MCP')
+    // 再点一次回到全部
+    await mustClick('Gemini CLI')
+    if (!txt().includes('acemcp')) throw new Error('再点一次没有回到全部')
+
+    // 类型筛选
+    await mustClick('插件')
+    if (txt().includes('node_repl')) throw new Error('切到「插件」还在显示 MCP')
+    if (!txt().includes('codex@openai-codex')) throw new Error('切到「插件」没显示插件')
+
+    // md 要渲染着看,不是一屏 # 和 ---。切回 Skills,点开一个 SKILL.md
+    await mustClick('Skills')
+    const link = (Array.from(document.querySelectorAll('button')) as HTMLElement[]).find((b) =>
+      (b.getAttribute('title') || '').includes('git-commit-helper') &&
+      (b.getAttribute('title') || '').endsWith('SKILL.md'),
+    )
+    if (!link) throw new Error('找不到 git-commit-helper 的 SKILL.md 出处按钮')
+    await act(async () => {
+      link.click()
+    })
+    await act(async () => {
+      await sleep(120)
+    })
+    const dialogTxt = () => document.body.textContent || ''
+    // 渲染后标题是真标题,不是裸的 "# 提交助手"
+    if (dialogTxt().includes('# 提交助手')) throw new Error('md 没有渲染,还是源码')
+    if (!document.querySelector('h1')) throw new Error('md 预览里没有渲染出标题')
+    // frontmatter 拆成了元数据卡:key 单独一格,列表变成标签
+    if (!dialogTxt().includes('allowed-tools')) throw new Error('frontmatter 没拆出来')
+    if (dialogTxt().includes('---')) throw new Error('frontmatter 的分隔线漏进了正文')
+    // 能切到编辑,切过去就是源码
+    await mustClick('看源码并编辑')
+    if (!dialogTxt().includes('---')) throw new Error('切到编辑后应该看到原文,含 frontmatter')
+    await mustClick('关闭（Esc）')
   })
 
   // 20) 包名搜索:七麦要登录态,配置入口和"配没配"都得在这一页上看得见

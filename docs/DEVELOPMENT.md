@@ -49,8 +49,10 @@ tool_forge/
 │   ├── tools/                     # 每个工具一个子包（详见 §5）
 │   │   ├── adbx/                  # adb 底座：连服务端、挑设备、跑命令（内置 adb）
 │   │   ├── aichat/                # AI 对话 + 翻译 + 多协议适配
+│   │   ├── aiconfig/              # 本机 AI 配置总览：扫各家的 MCP / skills / 插件，每条带出处文件
 │   │   ├── aistupid/              # AI 智障检测
 │   │   ├── appsearch/             # App 全平台搜索（七麦等）
+│   │   ├── archive/               # tar 解包（越界路径拦截、Windows 非法文件名改名），取证与真机浏览共用
 │   │   ├── charles/               # Charles Key 生成
 │   │   ├── claudeinsight/         # Claude 用量洞察
 │   │   ├── clipboard/             # 剪贴板历史

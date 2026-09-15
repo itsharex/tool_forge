@@ -129,6 +129,8 @@ import { meta as netEnvCheckMeta } from './netenvcheck/meta'
 
 import LlmProxy from './llm-proxy'
 import { meta as llmProxyMeta } from './llm-proxy/meta'
+import AIConfig from './ai-config'
+import { meta as aiConfigMeta } from './ai-config/meta'
 
 export interface ToolEntry {
   meta: ToolMeta
@@ -179,6 +181,7 @@ export const tools: ToolEntry[] = [
   { meta: imageMergeMeta, Component: ImageMerge },
   { meta: netEnvCheckMeta, Component: NetEnvCheck },
   { meta: llmProxyMeta, Component: LlmProxy },
+  { meta: aiConfigMeta, Component: AIConfig },
 ]
 
 export const toolRegistry: ToolMeta[] = tools.map((t) => t.meta)
