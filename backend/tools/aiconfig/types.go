@@ -30,7 +30,12 @@ const (
 	// OriginShared ~/.agents/skills:跨工具共享的 skills 池。
 	// Continue / Trae 的 skills 目录里全是指向它的软链
 	OriginShared Origin = "shared"
+	OriginGrok   Origin = "grok"
 )
+
+// 名单之外的来源:Origin 就是它的目录名去掉前导点(".factory" → "factory")。
+// 扫描按形状自动发现,不靠名单 —— 名单只决定页面上给不给 logo 和一句话说明。
+// 一台机器上装了什么 AI 工具是用户说了算的,每冒出一家就得改代码不是办法
 
 // Source 一条配置的出处。
 //
@@ -110,10 +115,12 @@ type OriginInfo struct {
 	// 页面上才能回答"我装了 Cursor 吗"这种问题,而不是让它凭空消失
 	Present bool `json:"present"`
 	// Root 这家的配置根目录(或主配置文件)
-	Root    string `json:"root,omitempty"`
-	MCP     int    `json:"mcp"`
-	Skills  int    `json:"skills"`
-	Plugins int    `json:"plugins"`
+	Root string `json:"root,omitempty"`
+	// Known 在不在已知名单里。不在的走通用卡片,显示目录名
+	Known   bool `json:"known"`
+	MCP     int  `json:"mcp"`
+	Skills  int  `json:"skills"`
+	Plugins int  `json:"plugins"`
 }
 
 // Snapshot 一次全量扫描的结果

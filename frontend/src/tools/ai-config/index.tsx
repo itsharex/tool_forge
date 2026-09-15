@@ -98,6 +98,15 @@ export default function AIConfigTool() {
     return m
   }, [snap])
 
+  // 墙上的卡片:名单里的按固定顺序排,后端按形状发现的名单外来源追在后面。
+  // 只画名单会让「装了但不在名单里」的那几家凭空消失 —— 而它们的 skills 在对话里是看得见的
+  const wall = useMemo(() => {
+    const extra = (snap?.origins ?? [])
+      .filter((o) => !o.known)
+      .map((o) => originMeta(o.origin))
+    return [...ORIGINS, ...extra]
+  }, [snap])
+
   const total = {
     mcp: snap?.mcp?.length ?? 0,
     skills: snap?.skills?.length ?? 0,
@@ -146,7 +155,7 @@ export default function AIConfigTool() {
             hint={origin ? '再点一次回到全部' : '点一家只看它的;没装的也列着,免得以为漏扫了'}
           />
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {ORIGINS.map((o) => {
+            {wall.map((o) => {
               const info = originInfo.get(o.id)
               const present = info?.present ?? false
               const active = origin === o.id

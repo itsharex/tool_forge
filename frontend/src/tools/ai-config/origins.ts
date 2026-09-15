@@ -8,6 +8,7 @@ import {
   MousePointer2,
   Sparkles,
   Wrench,
+  Zap,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -59,6 +60,15 @@ export const ORIGINS: OriginMeta[] = [
     tone: 'bg-gradient-to-br from-blue-500/20 to-indigo-600/10 text-blue-600 dark:text-blue-300',
     bar: 'bg-blue-500',
     chip: 'bg-blue-500/12 text-blue-700 dark:text-blue-300',
+  },
+  {
+    id: 'grok',
+    name: 'Grok CLI',
+    blurb: 'xAI 的命令行 agent。配置在 ~/.grok;自带一批 skills(docx / pptx / code-review……)',
+    icon: Zap,
+    tone: 'bg-gradient-to-br from-neutral-500/20 to-neutral-800/10 text-neutral-700 dark:text-neutral-200',
+    bar: 'bg-neutral-700 dark:bg-neutral-300',
+    chip: 'bg-neutral-500/12 text-neutral-700 dark:text-neutral-200',
   },
   {
     id: 'cline',
@@ -118,13 +128,19 @@ export const ORIGINS: OriginMeta[] = [
 
 const BY_ID = new Map(ORIGINS.map((o) => [o.id, o]))
 
-/** 认不出的来源给一个中性的兜底,不能因为后端多加了一家就白屏 */
+/**
+ * 认不出的来源给一个中性的兜底。
+ *
+ * 后端是按形状自动发现的:家目录下任何有 skills/ 或 MCP 配置的隐藏目录都会报上来,
+ * 名字就是目录名去掉前导点。名单只管 logo 和说明,不在名单里的照样列 —— 一台机器上
+ * 装了什么 AI 工具是用户说了算的
+ */
 export function originMeta(id: string): OriginMeta {
   return (
     BY_ID.get(id) ?? {
       id,
       name: id,
-      blurb: '',
+      blurb: `~/.${id} —— 按目录形状自动发现的,名单里还没有它的说明`,
       icon: Bot,
       tone: 'bg-secondary text-foreground',
       bar: 'bg-muted-foreground',

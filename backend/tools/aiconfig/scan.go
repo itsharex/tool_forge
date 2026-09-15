@@ -44,6 +44,7 @@ func Scan(h Home) (*Snapshot, error) {
 	codexDir := filepath.Join(home, ".codex")
 	claudeJSON := filepath.Join(home, ".claude.json")
 	geminiDir := filepath.Join(home, ".gemini")
+	grokDir := filepath.Join(home, ".grok")
 	continueDir := filepath.Join(home, ".continue")
 	traeDir := filepath.Join(home, ".trae")
 	cursorDir := filepath.Join(home, ".cursor")
@@ -64,14 +65,38 @@ func Scan(h Home) (*Snapshot, error) {
 		{OriginContinue, continueDir},
 		{OriginTrae, traeDir},
 		{OriginCursor, cursorDir},
+		{OriginGrok, grokDir},
 		{OriginShared, filepath.Join(home, ".agents")},
 	}
+	known := map[string]bool{}
 	for _, r := range roots {
 		_, err := os.Stat(r.root)
-		snap.Origins = append(snap.Origins, OriginInfo{Origin: r.origin, Present: err == nil, Root: r.root})
+		snap.Origins = append(snap.Origins, OriginInfo{Origin: r.origin, Present: err == nil, Root: r.root, Known: true})
+		known[r.root] = true
 		if err == nil {
 			snap.Roots = append(snap.Roots, r.root)
 		}
+	}
+
+	// 名单之外的:按形状找。家目录下任何隐藏目录,只要有 skills/、mcp.json,
+	// 或 toml/json 里真有 MCP 段,就当一家。实测一台机器上光名单外的就有
+	// .factory / .cc-switch / .mirasim 三家,而它们的 skills 在对话里是看得见的
+	for _, d := range discoverVendors(home, known) {
+		snap.Origins = append(snap.Origins, OriginInfo{Origin: d.origin, Present: true, Root: d.root, Known: false})
+		snap.Roots = append(snap.Roots, d.root)
+		scanMCPServersJSON(snap, filepath.Join(d.root, "mcp.json"), d.origin)
+		// settings.json / config.toml 只在真有 MCP 段时才去解析。名单外的工具那些文件
+		// 什么样都有 —— 实测 .factory/settings.json 是带注释的 JSONC,一读就报
+		// "解析失败",页面上变成一条吓人的「有文件没读成,内容不全」,而它和 MCP 毫无关系
+		if settings := filepath.Join(d.root, "settings.json"); hasMCPSection(settings, `"mcpServers"`) {
+			scanMCPServersJSON(snap, settings, d.origin)
+		}
+		if toml := filepath.Join(d.root, "config.toml"); hasMCPSection(toml, "[mcp_servers") {
+			scanCodexStyleTOML(snap, toml, d.origin)
+		}
+		scanSkillDir(snap, filepath.Join(d.root, "skills"), Source{
+			File: filepath.Join(d.root, "skills"), Origin: d.origin, Scope: "全局",
+		})
 	}
 
 	// MCP
@@ -84,6 +109,7 @@ func Scan(h Home) (*Snapshot, error) {
 	// Cursor / Trae 的 MCP 落在 mcp.json;本机没配,但文件一出现就该认
 	scanMCPServersJSON(snap, filepath.Join(cursorDir, "mcp.json"), OriginCursor)
 	scanMCPServersJSON(snap, filepath.Join(traeDir, "mcp.json"), OriginTrae)
+	scanCodexStyleTOML(snap, filepath.Join(grokDir, "config.toml"), OriginGrok)
 
 	// skills:各家目录结构一样,都是 <root>/skills/<name>/SKILL.md
 	for _, s := range []struct {
@@ -96,12 +122,19 @@ func Scan(h Home) (*Snapshot, error) {
 		{OriginContinue, filepath.Join(continueDir, "skills")},
 		{OriginTrae, filepath.Join(traeDir, "skills")},
 		{OriginCursor, filepath.Join(cursorDir, "skills")},
+		{OriginGrok, filepath.Join(grokDir, "skills")},
 		// ~/.agents/skills 是个跨工具共享池,Continue / Trae 的 skills 全是指向它的软链。
 		// 也扫它本身:池里可能有还没被任何一家链过去的
 		{OriginShared, filepath.Join(home, ".agents", "skills")},
 	} {
 		scanSkillDir(snap, s.dir, Source{File: s.dir, Origin: s.origin, Scope: "全局"})
 	}
+
+	// Grok 自带一批 skills(docx / pptx / code-review……),和用户软链进去的那 27 个
+	// 不是一回事:自带的随版本更新,用户改了会被覆盖。分开标
+	scanSkillDir(snap, filepath.Join(grokDir, "bundled", "skills"), Source{
+		File: filepath.Join(grokDir, "bundled", "skills"), Origin: OriginGrok, Scope: "自带",
+	})
 
 	scanPlugins(snap, claudeDir)
 
@@ -276,6 +309,11 @@ type codexTOMLShape struct {
 }
 
 func scanCodexTOML(snap *Snapshot, path string) {
+	scanCodexStyleTOML(snap, path, OriginCodex)
+}
+
+// scanCodexStyleTOML 「[mcp_servers.<name>]」这种 TOML 写法。Codex 和 Grok 都用它
+func scanCodexStyleTOML(snap *Snapshot, path string, origin Origin) {
 	if _, err := os.Stat(path); err != nil {
 		if !os.IsNotExist(err) {
 			snap.note(path, err.Error())
@@ -301,9 +339,64 @@ func scanCodexTOML(snap *Snapshot, path string) {
 			EnvKeys:    sortedKeys(s.Env),
 			Enabled:    true,
 			Toggleable: false,
-			Source:     Source{File: path, Origin: OriginCodex, Scope: "全局"},
+			Source:     Source{File: path, Origin: origin, Scope: "全局"},
 		})
 	}
+}
+
+// discovered 一个按形状找到的、名单之外的来源
+type discovered struct {
+	origin Origin
+	root   string
+}
+
+// discoverVendors 家目录下所有隐藏目录里,长得像 AI 工具配置的那些。
+//
+// 判据只认三种形状:skills/ 目录、mcp.json、或 config.toml / settings.json 里真的有
+// MCP 段。光有 config.toml 不算 —— 家目录下一堆工具都有 config.toml,
+// 实测 .dbfingerprint 就是,它和 AI 一点关系没有
+func discoverVendors(home string, known map[string]bool) []discovered {
+	entries, err := os.ReadDir(home)
+	if err != nil {
+		return nil
+	}
+	var out []discovered
+	for _, e := range entries {
+		name := e.Name()
+		if !e.IsDir() || !strings.HasPrefix(name, ".") {
+			continue
+		}
+		root := filepath.Join(home, name)
+		if known[root] || !looksLikeVendor(root) {
+			continue
+		}
+		out = append(out, discovered{origin: Origin(strings.TrimPrefix(name, ".")), root: root})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].origin < out[j].origin })
+	return out
+}
+
+func looksLikeVendor(root string) bool {
+	if info, err := os.Stat(filepath.Join(root, "skills")); err == nil && info.IsDir() {
+		return true
+	}
+	if _, err := os.Stat(filepath.Join(root, "mcp.json")); err == nil {
+		return true
+	}
+	if hasMCPSection(filepath.Join(root, "settings.json"), `"mcpServers"`) {
+		return true
+	}
+	return hasMCPSection(filepath.Join(root, "config.toml"), "[mcp_servers")
+}
+
+// hasMCPSection 文件里有没有 MCP 段。只是个粗筛,真解析在后面;
+// 这里就是为了把 .dbfingerprint 那种"有 config.toml 但和 MCP 无关"的挡在门外
+func hasMCPSection(path, needle string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil || len(data) > 4<<20 {
+		return false
+	}
+	return strings.Contains(string(data), needle)
 }
 
 // toolForgeServer 我们自己那份 servers.json 的形状。

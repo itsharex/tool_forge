@@ -686,6 +686,10 @@ async function main() {
     }
     if (!txt().includes('未安装')) throw new Error('没装的那家要标「未安装」,不能凭空消失')
     if (!txt().includes('装了,没配东西')) throw new Error('装了但没配的那家要说清楚,不能和没装混在一起')
+    // 名单外按形状发现的也要上墙,名字就是目录名 —— 否则装了的工具凭空消失
+    if (!btn('~/.factory —— 按目录形状自动发现的,名单里还没有它的说明')) {
+      throw new Error('按形状发现的名单外来源没有上墙')
+    }
 
     // 三种类型都列出来,而且每条都带来源和出处文件
     if (!txt().includes('acemcp')) throw new Error('没有列出 Claude 的 MCP')

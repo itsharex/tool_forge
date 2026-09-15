@@ -700,14 +700,16 @@ module.exports.aiConfigSnapshot = {
   ],
   // 每家一条,含没装的 —— 来源墙要能把「未安装」和「装了没配」区分开
   origins: [
-    { origin: 'claude', present: true, root: 'C:\\Users\\u\\.claude', mcp: 2, skills: 2, plugins: 2 },
-    { origin: 'codex', present: true, root: 'C:\\Users\\u\\.codex', mcp: 1, skills: 1, plugins: 0 },
-    { origin: 'gemini', present: true, root: 'C:\\Users\\u\\.gemini', mcp: 1, skills: 0, plugins: 0 },
-    { origin: 'cline', present: true, root: 'C:\\Users\\u\\AppData\\Roaming\\Code', mcp: 0, skills: 0, plugins: 0 },
-    { origin: 'continue', present: true, root: 'C:\\Users\\u\\.continue', mcp: 0, skills: 1, plugins: 0 },
-    { origin: 'trae', present: false, root: 'C:\\Users\\u\\.trae', mcp: 0, skills: 0, plugins: 0 },
-    { origin: 'cursor', present: false, root: 'C:\\Users\\u\\.cursor', mcp: 0, skills: 0, plugins: 0 },
-    { origin: 'toolforge', present: true, root: 'C:\\Users\\u\\.toolforge', mcp: 1, skills: 0, plugins: 0 },
-    { origin: 'shared', present: true, root: 'C:\\Users\\u\\.agents', mcp: 0, skills: 1, plugins: 0 },
+    { origin: 'claude', present: true, root: 'C:\\Users\\u\\.claude', mcp: 2, skills: 2, plugins: 2, known: true },
+    { origin: 'codex', present: true, known: true, root: 'C:\\Users\\u\\.codex', mcp: 1, skills: 1, plugins: 0 },
+    { origin: 'gemini', present: true, known: true, root: 'C:\\Users\\u\\.gemini', mcp: 1, skills: 0, plugins: 0 },
+    { origin: 'cline', present: true, known: true, root: 'C:\\Users\\u\\AppData\\Roaming\\Code', mcp: 0, skills: 0, plugins: 0 },
+    { origin: 'continue', present: true, known: true, root: 'C:\\Users\\u\\.continue', mcp: 0, skills: 1, plugins: 0 },
+    { origin: 'trae', present: false, known: true, root: 'C:\\Users\\u\\.trae', mcp: 0, skills: 0, plugins: 0 },
+    { origin: 'cursor', present: false, known: true, root: 'C:\\Users\\u\\.cursor', mcp: 0, skills: 0, plugins: 0 },
+    { origin: 'toolforge', present: true, known: true, root: 'C:\\Users\\u\\.toolforge', mcp: 1, skills: 0, plugins: 0 },
+    { origin: 'shared', present: true, known: true, root: 'C:\\Users\\u\\.agents', mcp: 0, skills: 1, plugins: 0 },
+    // 名单外、按目录形状发现的 —— 墙上要有它,而且名字就是目录名
+    { origin: 'factory', present: true, root: 'C:\\Users\\u\\.factory', mcp: 0, skills: 1, plugins: 0, known: false },
   ],
 }
