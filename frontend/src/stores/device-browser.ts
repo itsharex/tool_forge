@@ -12,6 +12,8 @@ interface DeviceBrowserState {
   sessionId: string
   /** 当前所在目录 */
   cwd: string
+  /** 连上时的起始目录,「回到起点」用 */
+  startPath: string
   /** 最近打开过的目录,回头找路用 */
   recent: string[]
 
@@ -40,6 +42,7 @@ export const useDeviceBrowserStore = create<DeviceBrowserState>()(
     (set) => ({
       sessionId: '',
       cwd: '',
+      startPath: '',
       recent: [],
       platform: 'ios',
       user: 'root',
@@ -48,9 +51,12 @@ export const useDeviceBrowserStore = create<DeviceBrowserState>()(
       rooted: false,
 
       setSession: (id, startPath, rooted) =>
-        set({ sessionId: id, cwd: startPath, rooted }),
+        // startPath 单独留一份:cwd 会随着翻目录一直变,
+        // 而「回到起点」要的是连上时那个位置(安卓 /data/data、iOS mobile 的 Library),
+        // 比回到 / 有用得多 —— / 底下全是系统目录,翻不到应用数据
+        set({ sessionId: id, cwd: startPath, startPath, rooted }),
       // 断开时不清 recent:下次连上还想回到上次翻的地方
-      clearSession: () => set({ sessionId: '', cwd: '' }),
+      clearSession: () => set({ sessionId: '', cwd: '', startPath: '' }),
       setCwd: (p) =>
         set((s) => ({
           cwd: p,

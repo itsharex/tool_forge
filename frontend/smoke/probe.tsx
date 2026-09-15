@@ -494,9 +494,9 @@ async function main() {
 
   // 17) 搜索:结果列表要能出来,并且能切回目录
   await mount('真机浏览 · 搜索', <DeviceBrowser />, async () => {
-    await mustType('在当前目录下按名字找', 'plist')
+    await mustType('从这里往下找', 'plist')
     const input = document.querySelector(
-      'input[placeholder*="在当前目录下按名字找"]',
+      'input[placeholder*="从这里往下找"]',
     ) as HTMLInputElement
     await act(async () => {
       input.dispatchEvent(
@@ -509,6 +509,9 @@ async function main() {
     const txt = document.body.textContent || ''
     if (!txt.includes('com.apple.mobilesafari.plist')) throw new Error('搜索结果没出来')
     if (!txt.includes('找到 2 条')) throw new Error('没有显示命中条数')
+    // 搜索是递归的,结果来自各个层级 —— 不写明从哪儿开始搜,
+    // 人会以为这些文件都在当前目录里
+    if (!txt.includes('往下递归查找')) throw new Error('没有说明搜索范围')
     await mustClick('返回目录')
     if (!(document.body.textContent || '').includes('Accounts')) {
       throw new Error('返回目录后没有回到列表')
@@ -532,6 +535,8 @@ async function main() {
     if (!txt.includes('22041216C')) throw new Error('设备型号没显示')
     // 常用位置要换成 Android 那套
     if (!txt.includes('应用数据')) throw new Error('常用位置没换成 Android 的')
+    // 文件夹整个导出:以前只有选中单个文件才导得了
+    if (!txt.includes('导出此目录')) throw new Error('没有导出当前目录的入口')
     if (txt.includes('通讯录捐赠')) throw new Error('Android 下还在显示 iOS 的常用位置')
   })
 

@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 
+	"tool_forge/backend/tools/archive"
 	"tool_forge/backend/tools/iosmux"
 )
 
@@ -276,7 +277,7 @@ func (e *iosExporter) exportOne(ctx context.Context, remote string) error {
 	e.log("streaming → %s", rel)
 	t0 := time.Now()
 	counted := &countingReader{r: stdout}
-	res, err := untarFrom(counted, e.output)
+	res, err := archive.Untar(counted, e.output)
 	if err != nil {
 		return fmt.Errorf("解包失败: %w", err)
 	}
@@ -289,7 +290,7 @@ func (e *iosExporter) exportOne(ctx context.Context, remote string) error {
 		return ctx.Err()
 	}
 
-	e.log("extracted %d file(s), %s (%s)", res.files, humanSize(counted.n), round(time.Since(t0)))
+	e.log("extracted %d file(s), %s (%s)", res.Files, humanSize(counted.n), round(time.Since(t0)))
 	reportUntar(res, e.log)
 	return nil
 }

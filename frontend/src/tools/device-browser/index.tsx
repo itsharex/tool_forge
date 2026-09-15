@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ChevronRight,
   CornerLeftUp,
+  Download,
   Folder,
   FileText,
+  FolderDown,
   Link2,
   RefreshCw,
   Search,
   Unplug,
+  X,
 } from 'lucide-react'
 import { ToolShell } from '@/components/tool/ToolShell'
 import { Button } from '@/components/ui/button'
@@ -16,6 +18,7 @@ import { useDeviceBrowserStore } from '@/stores/device-browser'
 import {
   ConnectDevice,
   DisconnectDevice,
+  ExportDeviceDir,
   ExportDeviceFile,
   ListDeviceDir,
   PickDirectory,
@@ -25,6 +28,7 @@ import {
 import type { devicefs } from '../../../wailsjs/go/models'
 import { meta } from './meta'
 import { ConnectPanel } from './ConnectPanel'
+import { Breadcrumbs } from './Breadcrumbs'
 import { PreviewPane, fmtSize } from './PreviewPane'
 import { presetsFor } from './presets'
 
@@ -39,6 +43,7 @@ export default function DeviceBrowser() {
   const adbPath = useDeviceBrowserStore((s) => s.adbPath)
   const rooted = useDeviceBrowserStore((s) => s.rooted)
   const cwd = useDeviceBrowserStore((s) => s.cwd)
+  const startPath = useDeviceBrowserStore((s) => s.startPath)
   const user = useDeviceBrowserStore((s) => s.user)
   const deviceId = useDeviceBrowserStore((s) => s.deviceId)
   const setSession = useDeviceBrowserStore((s) => s.setSession)
@@ -66,6 +71,14 @@ export default function DeviceBrowser() {
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<devicefs.SearchResult | null>(null)
   const [searching, setSearching] = useState(false)
+  // 搜索是从哪个目录发起的 —— 它是递归的,结果里会出现别的层级的路径,
+  // 不记住起点的话人会以为这些东西都在当前目录里
+  const [searchRoot, setSearchRoot] = useState('')
+
+  // 文件夹导出:进行中的那个路径 + 上一次的结果
+  const [dirExporting, setDirExporting] = useState('')
+  const [dirResult, setDirResult] = useState<devicefs.ExportDirResult | null>(null)
+  const [dirError, setDirError] = useState('')
 
   const load = useCallback(
     async (dir: string) => {
@@ -145,6 +158,7 @@ export default function DeviceBrowser() {
     if (!query.trim() || !sessionId) return
     setSearching(true)
     setListError('')
+    setSearchRoot(cwd)
     try {
       setHits(await SearchDeviceFiles(sessionId, cwd, query, 0))
     } catch (e) {
@@ -167,6 +181,21 @@ export default function DeviceBrowser() {
       setPreviewError(String(e))
     } finally {
       setExporting(false)
+    }
+  }
+
+  const exportDir = async (remote: string) => {
+    const dir = await PickDirectory('把这个文件夹导出到哪里', '')
+    if (!dir) return
+    setDirExporting(remote)
+    setDirError('')
+    setDirResult(null)
+    try {
+      setDirResult(await ExportDeviceDir(sessionId, remote, dir))
+    } catch (e) {
+      setDirError(String(e))
+    } finally {
+      setDirExporting('')
     }
   }
 
@@ -229,27 +258,60 @@ export default function DeviceBrowser() {
     >
       <div className="flex h-full min-h-0 flex-col gap-2">
         {/* 路径 + 搜索 */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-1.5">
           <Button
             variant="ghost"
             size="sm"
+            className="h-7 shrink-0 px-2"
             onClick={() => listing?.parent && load(listing.parent)}
             disabled={!listing?.parent}
             title="上一级"
           >
             <CornerLeftUp className="h-3.5 w-3.5" />
           </Button>
-          <Breadcrumbs path={cwd} onGo={load} />
-          <div className="relative ml-auto">
+          <Breadcrumbs path={cwd} startPath={startPath} onGo={load} />
+          {/* 当前目录也能整个导出 —— 以前只有选中单个文件才导得了 */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 shrink-0 px-2"
+            onClick={() => exportDir(cwd)}
+            disabled={!!dirExporting || cwd === '/'}
+            title={`把 ${cwd} 整个导出到本地`}
+          >
+            <FolderDown className={cn('h-3.5 w-3.5', dirExporting === cwd && 'animate-pulse')} />
+            <span className="text-[11px]">导出此目录</span>
+          </Button>
+          <div className="relative shrink-0">
             <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && runSearch()}
-              placeholder="在当前目录下按名字找"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void runSearch()
+                if (e.key === 'Escape') {
+                  setQuery('')
+                  setHits(null)
+                }
+              }}
+              // 它是递归的:从这里往下翻整棵子树。写"在当前目录下"会让人
+              // 以为只看这一层,然后对着一堆别处的结果发懵
+              placeholder="从这里往下找（回车搜索）"
               spellCheck={false}
-              className="h-7 w-56 rounded-md border border-input bg-background pl-7 pr-2 text-xs outline-none focus:ring-1 focus:ring-ring"
+              className="h-7 w-52 rounded-md border border-input bg-background pl-7 pr-7 text-xs outline-none focus:ring-1 focus:ring-ring"
             />
+            {query && (
+              <button
+                onClick={() => {
+                  setQuery('')
+                  setHits(null)
+                }}
+                title="清空（Esc）"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -267,6 +329,29 @@ export default function DeviceBrowser() {
           ))}
         </div>
 
+        {dirError && (
+          <div className="whitespace-pre-wrap break-words rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {dirError}
+          </div>
+        )}
+        {dirResult && (
+          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-700 dark:text-emerald-400">
+            已导出 {dirResult.files} 个文件 / {fmtSize(dirResult.bytes)}，用时{' '}
+            {(dirResult.elapsedMs / 1000).toFixed(1)} 秒 —— {dirResult.rootPath}
+            {/* 改过名必须让人看见:取证里文件名本身就是证据 */}
+            {dirResult.renamed > 0 && (
+              <div className="mt-1 text-amber-700 dark:text-amber-400">
+                有 {dirResult.renamed} 个名字在本地文件系统上非法，已替换其中的字符
+                {dirResult.renameSamples.length > 0 && (
+                  <span className="opacity-80">（例如 {dirResult.renameSamples[0]}）</span>
+                )}
+              </div>
+            )}
+            {dirResult.skipped > 0 && (
+              <div className="mt-0.5 opacity-80">跳过 {dirResult.skipped} 个成员（软链、设备节点之类）</div>
+            )}
+          </div>
+        )}
         {listError && (
           <div className="whitespace-pre-wrap break-words rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
             {listError}
@@ -278,10 +363,15 @@ export default function DeviceBrowser() {
             {hits ? (
               <SearchResults
                 res={hits}
+                root={searchRoot}
+                query={query}
                 searching={searching}
                 selected={selected}
                 onPick={open}
-                onBack={() => setHits(null)}
+                onBack={() => {
+                  setHits(null)
+                  setQuery('')
+                }}
               />
             ) : (
               <EntryList
@@ -289,6 +379,8 @@ export default function DeviceBrowser() {
                 loading={listLoading}
                 selected={selected}
                 onOpen={open}
+                onExportDir={exportDir}
+                exportingDir={dirExporting}
               />
             )}
           </div>
@@ -313,28 +405,46 @@ function EntryList({
   loading,
   selected,
   onOpen,
+  onExportDir,
+  exportingDir,
 }: {
   listing: devicefs.Listing | null
   loading: boolean
   selected: string
   onOpen: (e: devicefs.Entry) => void
+  onExportDir: (path: string) => void
+  exportingDir: string
 }) {
   if (!listing) {
     return <Hint>{loading ? '读取中…' : '还没有内容'}</Hint>
   }
   if (listing.entries.length === 0) {
-    return <Hint>空目录</Hint>
+    return <Hint>这个目录是空的</Hint>
   }
+  // 目录排前面。翻目录时找的多半是下一层,把它们和几百个文件混在一起没法用
+  const dirs = listing.entries.filter((e) => e.isDir).length
   return (
     <>
-      {listing.truncated && (
-        <div className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-700 dark:text-amber-400">
-          这个目录有 {listing.total} 条，只列出了前面一部分
-        </div>
-      )}
+      <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-muted/60 px-3 py-1 text-[10px] text-muted-foreground backdrop-blur">
+        <span>
+          {dirs} 个文件夹 · {listing.entries.length - dirs} 个文件
+        </span>
+        {listing.truncated && (
+          <span className="ml-auto text-amber-700 dark:text-amber-400">
+            共 {listing.total} 条，只列出了前面一部分
+          </span>
+        )}
+      </div>
       <ul className="text-[12.5px]">
         {listing.entries.map((e) => (
-          <Row key={e.path} e={e} active={e.path === selected} onClick={() => onOpen(e)} />
+          <Row
+            key={e.path}
+            e={e}
+            active={e.path === selected}
+            onClick={() => onOpen(e)}
+            onExportDir={onExportDir}
+            exporting={exportingDir === e.path}
+          />
         ))}
       </ul>
     </>
@@ -343,12 +453,16 @@ function EntryList({
 
 function SearchResults({
   res,
+  root,
+  query,
   searching,
   selected,
   onPick,
   onBack,
 }: {
   res: devicefs.SearchResult
+  root: string
+  query: string
   searching: boolean
   selected: string
   onPick: (e: devicefs.Entry) => void
@@ -356,44 +470,36 @@ function SearchResults({
 }) {
   return (
     <>
-      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-1.5 text-[11px] text-muted-foreground">
-        <span>
-          {searching ? '查找中…' : `找到 ${res.hits.length} 条`}
-          {res.truncated && '（已截断）'}
-        </span>
-        <button onClick={onBack} className="hover:text-foreground">
-          返回目录
-        </button>
+      {/* 搜索是递归的,命中会来自各个层级。不写明从哪儿开始搜的,
+          人会以为这些文件都在当前目录里 */}
+      <div className="sticky top-0 z-10 border-b border-border bg-muted/60 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-foreground">
+            {searching ? '查找中…' : `找到 ${res.hits.length} 条`}
+          </span>
+          {res.truncated && <span className="text-amber-700 dark:text-amber-400">已截断</span>}
+          <button
+            onClick={onBack}
+            className="ml-auto rounded px-1.5 py-0.5 hover:bg-secondary hover:text-foreground"
+          >
+            返回目录
+          </button>
+        </div>
+        <div className="mt-0.5 truncate" title={root}>
+          「{query}」· 从 <span className="font-mono">{root}</span> 往下递归查找
+        </div>
       </div>
       {res.hits.length === 0 && !searching ? (
-        <Hint>没有匹配的文件</Hint>
+        <Hint>没有名字含「{query}」的文件</Hint>
       ) : (
         <ul className="text-[12.5px]">
           {res.hits.map((h) => (
             <Row
               key={h.path}
-              e={
-                {
-                  name: h.path.split('/').pop() ?? h.path,
-                  path: h.path,
-                  isDir: h.isDir,
-                  size: h.size,
-                  modTime: h.modTime,
-                  mode: '',
-                } as devicefs.Entry
-              }
+              e={hitToEntry(h)}
               active={h.path === selected}
-              showPath
-              onClick={() =>
-                onPick({
-                  name: h.path.split('/').pop() ?? h.path,
-                  path: h.path,
-                  isDir: h.isDir,
-                  size: h.size,
-                  modTime: h.modTime,
-                  mode: '',
-                } as devicefs.Entry)
-              }
+              relativeTo={root}
+              onClick={() => onPick(hitToEntry(h))}
             />
           ))}
         </ul>
@@ -402,83 +508,107 @@ function SearchResults({
   )
 }
 
+/** 搜索命中转成列表行认识的形状 */
+function hitToEntry(h: devicefs.SearchHit): devicefs.Entry {
+  return {
+    name: h.path.split('/').pop() ?? h.path,
+    path: h.path,
+    isDir: h.isDir,
+    size: h.size,
+    modTime: h.modTime,
+    mode: '',
+  } as devicefs.Entry
+}
+
 function Row({
   e,
   active,
-  showPath,
+  relativeTo,
   onClick,
+  onExportDir,
+  exporting,
 }: {
   e: devicefs.Entry
   active: boolean
-  showPath?: boolean
+  /** 给了就显示相对这里的路径 —— 搜索结果里绝对路径太长,前缀还都一样 */
+  relativeTo?: string
   onClick: () => void
+  onExportDir?: (path: string) => void
+  exporting?: boolean
 }) {
+  const sub = relativeTo ? relPath(e.path, relativeTo) : ''
   return (
-    <li>
-      <button
-        onClick={onClick}
+    <li className="group/row border-b border-border/40 last:border-0">
+      <div
         className={cn(
-          'flex w-full items-center gap-2 px-3 py-1.5 text-left transition-colors hover:bg-accent',
+          'flex w-full items-center gap-2 px-3 py-1.5 transition-colors hover:bg-accent/60',
           active && 'bg-accent'
         )}
       >
-        {e.isDir ? (
-          <Folder className="h-3.5 w-3.5 shrink-0 text-sky-600 dark:text-sky-400" />
-        ) : (
-          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        )}
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-mono" title={e.path}>
-            {showPath ? e.path : e.name}
-          </span>
-          {/* 软链要标出来:iOS 上 /var 就是 /private/var 的软链,
-              不标的话人会以为自己在两个不同的地方看到了同一份数据 */}
-          {e.symlink && (
-            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <Link2 className="h-3 w-3" />
-              {e.symlink}
-            </span>
+        <button onClick={onClick} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+          {e.isDir ? (
+            <Folder className="h-3.5 w-3.5 shrink-0 fill-sky-500/20 text-sky-600 dark:text-sky-400" />
+          ) : (
+            <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           )}
-          {e.err && <span className="block text-[10px] text-destructive">{e.err}</span>}
-        </span>
-        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-mono" title={e.path}>
+              {e.name}
+            </span>
+            {sub && (
+              <span className="block truncate font-mono text-[10px] text-muted-foreground" title={e.path}>
+                {sub}
+              </span>
+            )}
+            {/* 软链要标出来:iOS 上 /var 就是 /private/var 的软链,
+                不标的话人会以为自己在两个不同的地方看到了同一份数据 */}
+            {e.symlink && (
+              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Link2 className="h-3 w-3" />
+                {e.symlink}
+              </span>
+            )}
+            {e.err && <span className="block text-[10px] text-destructive">{e.err}</span>}
+          </span>
+        </button>
+
+        {/* 文件夹的导出按钮平时不显示,悬停才出来 —— 常驻的话每一行都多一个图标,
+            几百条列表会很吵 */}
+        {e.isDir && onExportDir && (
+          <button
+            onClick={(ev) => {
+              ev.stopPropagation()
+              onExportDir(e.path)
+            }}
+            disabled={exporting}
+            title={`把 ${e.name} 整个导出到本地`}
+            className={cn(
+              'shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground',
+              exporting ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-100'
+            )}
+          >
+            <Download className={cn('h-3.5 w-3.5', exporting && 'animate-pulse')} />
+          </button>
+        )}
+
+        <span className="w-14 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground">
           {e.isDir ? '' : fmtSize(e.size)}
         </span>
-        <span className="w-[88px] shrink-0 text-right text-[10px] tabular-nums text-muted-foreground">
+        <span className="w-[84px] shrink-0 text-right text-[10px] tabular-nums text-muted-foreground">
           {fmtTime(e.modTime)}
         </span>
-      </button>
+      </div>
     </li>
   )
 }
 
-function Breadcrumbs({ path, onGo }: { path: string; onGo: (p: string) => void }) {
-  const parts = path.split('/').filter(Boolean)
-  return (
-    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5 text-[11px] text-muted-foreground">
-      <button onClick={() => onGo('/')} className="hover:text-foreground">
-        /
-      </button>
-      {parts.map((seg, i) => {
-        const full = '/' + parts.slice(0, i + 1).join('/')
-        return (
-          <span key={full} className="flex items-center gap-0.5">
-            <ChevronRight className="h-3 w-3 opacity-50" />
-            <button
-              onClick={() => onGo(full)}
-              className={cn(
-                'max-w-[160px] truncate hover:text-foreground',
-                i === parts.length - 1 && 'font-medium text-foreground'
-              )}
-              title={full}
-            >
-              {seg}
-            </button>
-          </span>
-        )
-      })}
-    </div>
-  )
+/** 把绝对路径压成相对 root 的形式,root 之外的原样返回 */
+function relPath(p: string, root: string): string {
+  const base = root.endsWith('/') ? root : root + '/'
+  if (!p.startsWith(base)) return p
+  const rest = p.slice(base.length)
+  const cut = rest.lastIndexOf('/')
+  return cut > 0 ? rest.slice(0, cut) : ''
 }
 
 function Hint({ children }: { children: React.ReactNode }) {

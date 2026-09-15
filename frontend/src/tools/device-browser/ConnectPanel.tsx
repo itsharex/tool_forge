@@ -142,7 +142,7 @@ export function ConnectPanel({
                 <input
                   value={adbPath}
                   onChange={(e) => onAdbPathChange(e.target.value)}
-                  placeholder="adb"
+                  placeholder="一般留空即可"
                   spellCheck={false}
                   className={inputCls}
                 />

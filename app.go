@@ -2206,6 +2206,14 @@ func (a *App) ListOutlookRefreshHistory() []outlookmail.RefreshJobState {
 	return a.outlook.Jobs().History()
 }
 
+// ExportDeviceDir 把设备上一个文件夹整个拉到本地。
+//
+// 和单个文件的导出分开:文件夹要在设备上先打包成一条流再边收边解,
+// 一个一个文件拉的话,几千个小文件就是几千次协议往返
+func (a *App) ExportDeviceDir(sessionID, remote, localDir string) (*devicefs.ExportDirResult, error) {
+	return a.devicefs.ExportDir(sessionID, remote, localDir)
+}
+
 // ================ SQLite ================
 //
 // 取证导出里通常有几十个 SQLite 库,聊天记录、通讯录、账号都在里面。

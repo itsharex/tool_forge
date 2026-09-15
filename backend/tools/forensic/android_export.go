@@ -1,20 +1,19 @@
 package forensic
 
 import (
-	"archive/tar"
 	"context"
 	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
 	"github.com/electricbubble/gadb"
 
 	"tool_forge/backend/tools/adbx"
+	"tool_forge/backend/tools/archive"
 )
 
 // 安卓导出走 adb 协议本身,不再 fork adb 命令行。
@@ -353,15 +352,15 @@ func warnIfNotEmpty(dir string, log func(string, ...any)) {
 
 // reportUntar 把一次解包里"动过手脚"的部分如实说出来。
 // 两个平台共用 —— 改名和跳过在哪边都一样要交代
-func reportUntar(res untarResult, log func(string, ...any)) {
+func reportUntar(res archive.Result, log func(string, ...any)) {
 	// 改过名的必须说出来。取证里文件名本身就是证据的一部分,
 	// 悄悄换掉几百个名字而不吭声,是在给后面的人埋雷
-	if res.renamed > 0 {
+	if res.Renamed > 0 {
 		log("WARN %d 个名字在本地文件系统上非法,已替换其中的字符;例如 %s",
-			res.renamed, strings.Join(res.samples, " / "))
+			res.Renamed, strings.Join(res.Samples, " / "))
 	}
-	if res.skipped > 0 {
-		log("WARN 跳过 %d 个成员(软链、设备节点之类)", res.skipped)
+	if res.Skipped > 0 {
+		log("WARN 跳过 %d 个成员(软链、设备节点之类)", res.Skipped)
 	}
 }
 
@@ -417,7 +416,7 @@ func (e *androidExporter) exportOne(ctx context.Context, remote string) error {
 		pw.CloseWithError(e.dev.Pull(stage, pw))
 	}()
 	counted := &countingReader{r: pr}
-	res, err := untarFrom(counted, e.output)
+	res, err := archive.Untar(counted, e.output)
 	// 解包先失败时,拉取那头还堵在写上,关掉读端让它退出来
 	_ = pr.Close()
 	if err != nil {
@@ -427,7 +426,7 @@ func (e *androidExporter) exportOne(ctx context.Context, remote string) error {
 	// 拉和解现在是同时发生的,分不开也就不该分开报 ——
 	// 给两个数字会让人以为它们是前后两段
 	e.log("extracted %d file(s), %s (打包 %s / 拉取+解包 %s)",
-		res.files, humanSize(counted.n),
+		res.Files, humanSize(counted.n),
 		round(packTook), round(time.Since(pullStart)))
 	reportUntar(res, e.log)
 	return nil
@@ -452,163 +451,4 @@ func sanitize(s string) string {
 		}
 	}
 	return b.String()
-}
-
-// untarResult 一次解包的统计
-type untarResult struct {
-	files   int
-	renamed int
-	skipped int
-	// samples 前几条改名记录,写进日志给人看
-	samples []string
-}
-
-// maxRenameSamples 日志里最多举几个改名的例子。
-// 微信那种目录一改就是几百个,全打出来只会把日志淹掉
-const maxRenameSamples = 3
-
-// untar 解开一个 tar 到 dest。
-//
-// 两件事必须做,都是被真实数据逼出来的:
-//
-//  1. 逐条校验路径落在 dest 里面。tar 包里可以写 ../../ 这样的成员名,
-//     不拦的话解包会把文件写到目标目录之外。这个包是从被取证的设备上拿来的,
-//     内容不可信,这道检查不能省。
-//
-//  2. 安卓上合法的名字在 Windows 上未必合法。微信就有个目录叫
-//     com.tencent.mm:appbrand0 —— 冒号在 Windows 上是非法字符,
-//     mkdir 直接失败,而原来的写法会让整包解包中断,前面拉下来的全丢。
-//     现在改成替换非法字符并计数上报:数据留住,改动如实说出来。
-//
-// untarFrom 从一个流里解包。两个平台都走它,边收边解,本地不落 tar。
-//
-// iOS 那边 tar 直接从设备的 ssh 通道流过来,设备上也不落文件;
-// 安卓那边 adb 的同步协议要一个现成的文件才能拉,所以设备上那一份躲不掉,
-// 但本地这一份可以省 —— 几百 MB 的应用少一读一写,
-// 而且进程被杀时不会在证据目录里留下半个 .tar
-func untarFrom(r io.Reader, dest string) (untarResult, error) {
-	var res untarResult
-	absDest, err := filepath.Abs(dest)
-	if err != nil {
-		return res, err
-	}
-	if err := os.MkdirAll(absDest, 0o755); err != nil {
-		return res, err
-	}
-	tr := tar.NewReader(r)
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			return res, nil
-		}
-		if err != nil {
-			return res, err
-		}
-
-		cleaned, renamed := localSafePath(hdr.Name)
-		target := filepath.Join(absDest, filepath.FromSlash(cleaned))
-		absTarget, err := filepath.Abs(target)
-		if err != nil {
-			return res, err
-		}
-		if !strings.HasPrefix(absTarget, absDest+string(os.PathSeparator)) && absTarget != absDest {
-			return res, fmt.Errorf("包里有指向目标目录之外的成员: %s", hdr.Name)
-		}
-		if renamed {
-			res.renamed++
-			if len(res.samples) < maxRenameSamples {
-				res.samples = append(res.samples, hdr.Name+" → "+cleaned)
-			}
-		}
-
-		switch hdr.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(absTarget, 0o755); err != nil {
-				return res, err
-			}
-		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(absTarget), 0o755); err != nil {
-				return res, err
-			}
-			out, err := os.Create(absTarget)
-			if err != nil {
-				return res, err
-			}
-			// tar 是流式读的,再大的成员也不会整个进内存
-			if _, err := io.Copy(out, tr); err != nil {
-				_ = out.Close()
-				return res, err
-			}
-			if err := out.Close(); err != nil {
-				return res, err
-			}
-			res.files++
-		default:
-			// 软链、设备节点之类跳过:落到本地文件系统上没有意义,
-			// 而软链还可能指到目标目录之外
-			res.skipped++
-		}
-	}
-}
-
-// windowsIllegal Windows 文件名里不能出现的字符。
-// 安卓那边这些全是合法的 —— 冒号尤其常见,应用的多进程目录就叫 <包名>:<进程名>
-const windowsIllegal = `<>:"|?*`
-
-// windowsReserved Windows 上不能当文件名的保留字(不分大小写,带扩展名也不行)
-var windowsReserved = map[string]bool{
-	"con": true, "prn": true, "aux": true, "nul": true,
-	"com1": true, "com2": true, "com3": true, "com4": true, "com5": true,
-	"com6": true, "com7": true, "com8": true, "com9": true,
-	"lpt1": true, "lpt2": true, "lpt3": true, "lpt4": true, "lpt5": true,
-	"lpt6": true, "lpt7": true, "lpt8": true, "lpt9": true,
-}
-
-// localSafePath 把 tar 里的成员名改成本地文件系统能接受的。
-//
-// 只在 Windows 上真的改。Linux / macOS 上冒号之类都是合法的,
-// 在那儿改名反而是把原始证据改坏了。
-func localSafePath(name string) (string, bool) {
-	if runtime.GOOS != "windows" {
-		return name, false
-	}
-	parts := strings.Split(name, "/")
-	changed := false
-	for i, seg := range parts {
-		fixed := safeSegment(seg)
-		if fixed != seg {
-			changed = true
-			parts[i] = fixed
-		}
-	}
-	return strings.Join(parts, "/"), changed
-}
-
-func safeSegment(seg string) string {
-	if seg == "" || seg == "." || seg == ".." {
-		return seg
-	}
-	var b strings.Builder
-	for _, r := range seg {
-		if r < 0x20 || strings.ContainsRune(windowsIllegal, r) {
-			b.WriteByte('_')
-			continue
-		}
-		b.WriteRune(r)
-	}
-	out := b.String()
-	// 结尾的点和空格 Windows 会自己吞掉,留着会造成两个不同的名字撞在一起
-	out = strings.TrimRight(out, ". ")
-	if out == "" {
-		return "_"
-	}
-	// 保留字要加个后缀躲开;带扩展名的也算(con.txt 同样开不了)
-	base := strings.ToLower(out)
-	if i := strings.IndexByte(base, '.'); i >= 0 {
-		base = base[:i]
-	}
-	if windowsReserved[base] {
-		out += "_"
-	}
-	return out
 }
