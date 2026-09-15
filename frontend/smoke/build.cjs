@@ -25,7 +25,17 @@ esbuild
     jsx: 'automatic',
     outfile: path.join(__dirname, '.out.cjs'),
     logLevel: 'error',
-    loader: { '.tsx': 'tsx', '.ts': 'ts', '.json': 'json', '.css': 'empty' },
+    // 图片按 dataurl 收:挂整个设置页会把「关于」那一栏的 logo 引进来。
+    // 设成 empty 的话 import 得到 undefined,<img src={undefined}> 在 jsdom 里会报警告
+    loader: {
+      '.tsx': 'tsx',
+      '.ts': 'ts',
+      '.json': 'json',
+      '.css': 'empty',
+      '.png': 'dataurl',
+      '.jpg': 'dataurl',
+      '.svg': 'dataurl',
+    },
     plugins: [
       {
         name: 'smoke-stub',

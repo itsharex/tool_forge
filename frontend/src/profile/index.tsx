@@ -9,6 +9,7 @@ import {
   Network,
   Palette,
   Plug,
+  Boxes,
   SlidersHorizontal,
   User,
   type LucideIcon,
@@ -23,6 +24,7 @@ import { DataSection } from './sections/Data'
 import { HotkeysSection } from './sections/Hotkeys'
 import { LocalAPISection } from './sections/LocalAPI'
 import { MCPSection } from './sections/MCP'
+import { AIConfigSection } from './sections/AIConfig'
 import { PlaceholderSection } from './sections/Placeholder'
 
 type SectionId =
@@ -32,6 +34,7 @@ type SectionId =
   | 'ai'
   | 'usage'
   | 'mcp'
+  | 'aiconfig'
   | 'localapi'
   | 'preferences'
   | 'data'
@@ -51,6 +54,7 @@ const SECTIONS: Section[] = [
   { id: 'ai', label: 'AI 配置', icon: Bot },
   { id: 'usage', label: 'AI 用量', icon: SlidersHorizontal },
   { id: 'mcp', label: 'MCP 服务器', icon: Plug },
+  { id: 'aiconfig', label: '本机 AI 配置', icon: Boxes },
   { id: 'localapi', label: '本地 API', icon: Network },
   { id: 'preferences', label: '工具偏好', icon: Palette, comingSoon: true },
   { id: 'data', label: '数据', icon: Database },
@@ -110,6 +114,8 @@ export function Profile() {
           <AIChatSection />
         ) : active === 'usage' ? (
           <AIUsageSection />
+        ) : active === 'aiconfig' ? (
+          <AIConfigSection />
         ) : active === 'mcp' ? (
           <MCPSection />
         ) : active === 'localapi' ? (

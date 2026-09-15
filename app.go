@@ -18,6 +18,7 @@ import (
 	"tool_forge/backend/apiserver"
 	"tool_forge/backend/system"
 	"tool_forge/backend/tools/aichat"
+	"tool_forge/backend/tools/aiconfig"
 	"tool_forge/backend/tools/aistupid"
 	"tool_forge/backend/tools/appsearch"
 	"tool_forge/backend/tools/charles"
@@ -302,7 +303,7 @@ func (a *App) GetAPIServerStatus() apiserver.Status {
 // ListAPIServerTools 列已注册的工具元信息(供前端 UI 渲染勾选列表)
 func (a *App) ListAPIServerTools() []apiserver.ToolInfo {
 	if a.api == nil {
-		return nil
+		return []apiserver.ToolInfo{}
 	}
 	return a.api.ListTools()
 }
@@ -318,7 +319,7 @@ func (a *App) GenerateAPIServerToken() string {
 // ListHotkeys 返回所有可绑定的全局热键 + 当前状态
 func (a *App) ListHotkeys() []system.HotkeyInfo {
 	if a.hotkey == nil {
-		return nil
+		return []system.HotkeyInfo{}
 	}
 	return a.hotkey.List()
 }
@@ -419,7 +420,7 @@ func (a *App) SendHTTPRequest(req httptest.Request) httptest.Response {
 // ListHTTPHistory 返回历史记录
 func (a *App) ListHTTPHistory() []httptest.HistoryItem {
 	if a.httptest == nil {
-		return nil
+		return []httptest.HistoryItem{}
 	}
 	return a.httptest.History()
 }
@@ -445,7 +446,7 @@ func (a *App) ClearHTTPHistory() {
 // ListProviders 返回所有保存的 Provider(active 排在最前)
 func (a *App) ListProviders() []providerswitch.Provider {
 	if a.provider == nil {
-		return nil
+		return []providerswitch.Provider{}
 	}
 	return a.provider.List()
 }
@@ -453,7 +454,7 @@ func (a *App) ListProviders() []providerswitch.Provider {
 // ListProviderPresets 返回内置预设(Anthropic / GLM / Kimi / OpenAI 等)
 func (a *App) ListProviderPresets() []providerswitch.Preset {
 	if a.provider == nil {
-		return nil
+		return []providerswitch.Preset{}
 	}
 	return a.provider.ListPresets()
 }
@@ -1314,7 +1315,7 @@ func (a *App) OpenDownloadsFolder() error {
 // ListAIProviders 列出所有 AI 供应商(按 UpdatedAt 倒序)
 func (a *App) ListAIProviders() []aichat.Provider {
 	if a.aichat == nil {
-		return nil
+		return []aichat.Provider{}
 	}
 	list, _ := a.aichat.ListProviders()
 	return list
@@ -1453,16 +1454,21 @@ func (a *App) SaveAIConfig(c aichat.Config) string {
 // ListAIUsage 返回 ~/.toolforge/ai-chat/usage.jsonl 全量记录(按时间正序)
 func (a *App) ListAIUsage() []aichat.UsageRecord {
 	if a.aichat == nil {
-		return nil
+		return []aichat.UsageRecord{}
 	}
 	list, _ := a.aichat.ListUsage()
+	if list == nil {
+		// 读盘出错时 ListUsage 给的是 nil,而 nil 切片到了前端是 null,
+		// 用量页第一句就是 records.filter —— 整页白屏
+		return []aichat.UsageRecord{}
+	}
 	return list
 }
 
 // ListAIConversations 列出所有会话(按 UpdatedAt 倒序)
 func (a *App) ListAIConversations() []aichat.ConversationSummary {
 	if a.aichat == nil {
-		return nil
+		return []aichat.ConversationSummary{}
 	}
 	list, _ := a.aichat.ListConversations()
 	return list
@@ -1563,6 +1569,21 @@ func (a *App) ReorderAIAssistants(ids []string) error {
 // ListAIChatTools 「工具」开关打开后,这一轮实际会声明给模型的工具清单
 func (a *App) ListAIChatTools() aichat.ChatToolsView {
 	return aichat.ToolsView()
+}
+
+// ScanAIConfig 扫一遍本机各家 AI 工具的配置(MCP / skills / 插件),每条都带出处文件
+func (a *App) ScanAIConfig() (*aiconfig.Snapshot, error) {
+	return aiconfig.Scan(aiconfig.Home{})
+}
+
+// ReadAIConfigFile 读一个本机 AI 配置文件(限定在 .claude / .codex / .toolforge 之内)
+func (a *App) ReadAIConfigFile(path string) (*aiconfig.FileContent, error) {
+	return aiconfig.ReadFile(aiconfig.Home{}, path)
+}
+
+// SaveAIConfigFile 原样写回,写前留一份带时间戳的备份
+func (a *App) SaveAIConfigFile(path, content string) error {
+	return aiconfig.WriteFile(aiconfig.Home{}, path, content)
 }
 
 // ListMCPServers 所有已配置的 MCP 服务器
@@ -1726,7 +1747,7 @@ func (a *App) ForkAIConversation(convID, msgID string) (aichat.Conversation, err
 // ListAIRequestTraces 最近几次发往上游的请求留档(精简版,不含请求体和响应帧)
 func (a *App) ListAIRequestTraces() []aichat.TraceSummary {
 	if a.aichat == nil {
-		return nil
+		return []aichat.TraceSummary{}
 	}
 	return a.aichat.ListRequestTraces()
 }
@@ -1936,7 +1957,7 @@ func (a *App) StopAIChat(convID string) string {
 // ListOutlookGroups 列分组
 func (a *App) ListOutlookGroups() []outlookmail.Group {
 	if a.outlook == nil {
-		return nil
+		return []outlookmail.Group{}
 	}
 	return a.outlook.ListGroups()
 }
@@ -2153,7 +2174,7 @@ func (a *App) SaveOutlookFromAuth(req outlookmail.SaveFromAuthRequest) (*outlook
 // PreviewOutlookExport 列分组及账号数(导出弹窗用)
 func (a *App) PreviewOutlookExport() []outlookmail.ExportSummary {
 	if a.outlook == nil {
-		return nil
+		return []outlookmail.ExportSummary{}
 	}
 	return a.outlook.ExportPreview()
 }
@@ -2225,7 +2246,7 @@ func (a *App) GetOutlookRefreshJob(jobID string) *outlookmail.RefreshJobState {
 // ListOutlookActiveRefreshJobs 列进行中的任务
 func (a *App) ListOutlookActiveRefreshJobs() []outlookmail.RefreshJobState {
 	if a.outlook == nil {
-		return nil
+		return []outlookmail.RefreshJobState{}
 	}
 	return a.outlook.Jobs().ListActive()
 }
@@ -2233,7 +2254,7 @@ func (a *App) ListOutlookActiveRefreshJobs() []outlookmail.RefreshJobState {
 // ListOutlookRefreshHistory 列最近完成 / 取消的任务
 func (a *App) ListOutlookRefreshHistory() []outlookmail.RefreshJobState {
 	if a.outlook == nil {
-		return nil
+		return []outlookmail.RefreshJobState{}
 	}
 	return a.outlook.Jobs().History()
 }

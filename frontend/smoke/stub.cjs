@@ -16,6 +16,22 @@ for (const rel of ['../wailsjs/go/main/App.js', '../wailsjs/runtime/runtime.js']
   for (const m of src.matchAll(/export function (\w+)/g)) names.add(m[1])
 }
 
+// 哪些绑定返回数组 —— 从 .d.ts 的声明里读。
+//
+// 默认桩原来一律 resolve(''),而前端对列表接口是直接 .map/.filter 的:
+// 一个没点名的列表绑定,在冒烟里的表现是「这一页崩了」,原因却和被测代码无关
+// (「AI 用量」那一栏就是这么红的,查了一圈才发现是桩不忠实)。
+// 从类型声明里认出数组、默认就给 [],以后新增列表绑定不必再记得来补一条。
+const arrayReturning = new Set()
+try {
+  const dts = fs.readFileSync(path.join(__dirname, '../wailsjs/go/main/App.d.ts'), 'utf8')
+  for (const m of dts.matchAll(/export function (\w+)\([^)]*\)\s*:\s*Promise<Array</g)) {
+    arrayReturning.add(m[1])
+  }
+} catch {
+  // 没有 d.ts 就退回原来的行为,不让冒烟因为这个起不来
+}
+
 const nop = () => {}
 
 // 真的事件总线,不是空实现。
@@ -43,6 +59,18 @@ const count = (name) => {
 const last = {}
 
 const special = {
+  // ---- 本机 AI 配置 ----
+  ScanAIConfig: () => Promise.resolve(fx.aiConfigSnapshot),
+  ReadAIConfigFile: (path) =>
+    Promise.resolve({
+      path,
+      content: '{\n  "mcpServers": {}\n}\n',
+      size: 24,
+      updatedAt: '2026-09-15 10:00:00',
+      editable: true,
+    }),
+  SaveAIConfigFile: () => Promise.resolve(),
+
   // ---- 取证 / 包名搜索的配置 ----
   GetForensicConfig: () => Promise.resolve({ binPath: '', enabled: false, defaultSshAddr: '' }),
   SaveForensicConfig: () => Promise.resolve(),
@@ -171,7 +199,10 @@ const special = {
 }
 
 for (const n of names) {
-  const impl = special[n] || (() => Promise.resolve(''))
+  const fallback = arrayReturning.has(n)
+    ? () => Promise.resolve([])
+    : () => Promise.resolve('')
+  const impl = special[n] || fallback
   module.exports[n] = (...args) => {
     count(n)
     return impl(...args)

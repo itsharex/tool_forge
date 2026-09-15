@@ -20,6 +20,8 @@ import { ExportDialog } from '../src/tools/ai-chat/ExportDialog'
 import { TraceDialog } from '../src/tools/ai-chat/TraceDialog'
 import { GlobalSearchDialog } from '../src/tools/ai-chat/GlobalSearchDialog'
 import { DefaultsTab } from '../src/profile/sections/aichat/DefaultsTab'
+import { AIConfigSection } from '../src/profile/sections/AIConfig'
+import { Profile } from '../src/profile'
 import MmkvTool from '../src/tools/mmkv/index'
 import PlistTool from '../src/tools/plist/index'
 import DeviceBrowser from '../src/tools/device-browser/index'
@@ -643,6 +645,66 @@ async function main() {
     ) as HTMLInputElement | null
     if (!box) throw new Error('检测没过,启用开关却是可点的')
     await mustClick('关闭（Esc）')
+  })
+
+  // 设置页本身:每一栏都要真的挂得上去。
+  //
+  // 这条是补出来的 —— 前面那些用例都是把 section 组件单独挂载来测的,
+  // 于是「组件能渲染」和「它真的被注册进了设置页」成了两件事,
+  // 后者一直没人验。注册漏一步的表现是:功能做完了、测试全绿、用户找不到入口
+  await mount('设置页 · 每一栏都挂得上', <MemoryRouter><Profile /></MemoryRouter>, async () => {
+    const labels = [
+      '基础信息', '剪贴板', '快捷键', 'AI 配置', 'AI 用量',
+      'MCP 服务器', '本机 AI 配置', '本地 API', '数据', '关于',
+    ]
+    const txt = () => document.body.textContent || ''
+    for (const label of labels) {
+      if (!btn(label)) throw new Error(`设置页左栏少了「${label}」`)
+    }
+
+    // 逐栏点开,任何一栏渲染炸了都会被上面那个 console.error 钩子抓成失败
+    for (const label of labels) {
+      await mustClick(label)
+    }
+
+    // 停在新加的这一栏,确认内容是它而不是「即将推出」的占位
+    await mustClick('本机 AI 配置')
+    if (!txt().includes('每条都标着出自哪个文件')) {
+      throw new Error('点了「本机 AI 配置」但内容没出来 —— 多半是渲染分支没接上')
+    }
+  })
+
+  // 本机 AI 配置:一处看全三家的 MCP / skills / 插件。
+  // 这一页的全部价值在「每条都标明出自哪个文件」——少了它就只是把四处混成一锅,
+  // 看到一条不对劲的却不知道该去改哪儿,比分开看还难查
+  await mount('本机 AI 配置', <MemoryRouter><AIConfigSection /></MemoryRouter>, async () => {
+    const txt = () => document.body.textContent || ''
+
+    if (!txt().includes('acemcp')) throw new Error('没有列出 Claude 的 MCP')
+    if (!txt().includes('node_repl')) throw new Error('没有列出 Codex 的 MCP')
+    if (!txt().includes('exa')) throw new Error('没有列出工具箱自己的 MCP')
+    // 三家混在一列里,不标来源一眼分不出谁是谁
+    if (!txt().includes('Codex') || !txt().includes('工具箱')) {
+      throw new Error('没有标出每条属于哪家')
+    }
+    // 出处文件是这一页存在的理由
+    if (!txt().includes('config.toml')) throw new Error('没有显示出处文件')
+    // 同名配在多处 —— 分开看时发现不了,正是要点破的
+    if (!txt().includes('多处重复')) throw new Error('同名配在多处没有被标出来')
+    // 解析失败的文件不能默默跳过:它的表现和「这一处本来就是空的」一样
+    if (!txt().includes('没读成')) throw new Error('解析失败的文件没有报出来')
+
+    await mustClick('Skills 3')
+    if (!txt().includes('插件 codex@openai-codex')) {
+      throw new Error('插件自带的 skill 没有标明出自哪个插件')
+    }
+    if (!txt().includes('缺 SKILL.md')) throw new Error('没有 SKILL.md 的 skill 没被点出来')
+
+    await mustClick('插件 2')
+    // 「装了」和「启用了」记在两个文件里,对不上时插件是静默不起作用的
+    if (!txt().includes('启用了但没装')) {
+      throw new Error('启用与安装状态对不上时没有点破 —— 那种插件是静默失效的')
+    }
   })
 
   // 20) 包名搜索:七麦要登录态,配置入口和"配没配"都得在这一页上看得见

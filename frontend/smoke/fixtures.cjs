@@ -633,3 +633,59 @@ module.exports = {
   sqliteTables,
   sqlitePage,
 }
+
+// 本机 AI 配置的快照。形状照 2026-09-15 实测的真实布局写:
+// MCP 散在四处、skills 散在三处、插件的「装了」和「启用了」分记两个文件而且会对不上
+module.exports.aiConfigSnapshot = {
+  roots: ['C:\\Users\\u\\.claude.json', 'C:\\Users\\u\\.claude', 'C:\\Users\\u\\.codex'],
+  mcp: [
+    {
+      name: 'acemcp', kind: 'stdio', command: 'ace', args: ['--stdio'],
+      envKeys: ['ACE_TOKEN'], enabled: true, toggleable: false,
+      source: { file: 'C:\\Users\\u\\.claude.json', origin: 'claude', scope: '全局' },
+    },
+    {
+      // 同名的第二份 —— 分开看的时候完全发现不了
+      name: 'acemcp', kind: 'stdio', command: 'ace', enabled: true, toggleable: false,
+      source: { file: 'C:\\Users\\u\\.claude.json', origin: 'claude', scope: '项目 C:\\proj' },
+    },
+    {
+      name: 'node_repl', kind: 'stdio', command: 'node_repl.exe', enabled: true, toggleable: false,
+      source: { file: 'C:\\Users\\u\\.codex\\config.toml', origin: 'codex', scope: '全局' },
+    },
+    {
+      name: 'exa', kind: 'http', url: 'https://x/mcp', enabled: false, toggleable: true, id: 's2',
+      source: { file: 'C:\\Users\\u\\.toolforge\\mcp\\servers.json', origin: 'toolforge', scope: '全局' },
+    },
+  ],
+  skills: [
+    {
+      name: 'git-commit-helper', description: '提交助手', dir: 'C:\\Users\\u\\.claude\\skills\\git-commit-helper',
+      fileCount: 2, hasSkillMd: true, updatedAt: '2026-09-01 12:00',
+      source: { file: 'C:\\Users\\u\\.claude\\skills', origin: 'claude', scope: '全局' },
+    },
+    {
+      name: 'codex-rescue', description: '救援', dir: 'C:\\Users\\u\\.claude\\plugins\\cache\\x\\skills\\codex-rescue',
+      fileCount: 1, hasSkillMd: true,
+      source: { file: 'C:\\Users\\u\\.claude\\plugins\\cache\\x\\skills', origin: 'claude', scope: '插件 codex@openai-codex' },
+    },
+    {
+      name: '缺文档的', dir: 'C:\\Users\\u\\.codex\\skills\\x', fileCount: 1, hasSkillMd: false,
+      source: { file: 'C:\\Users\\u\\.codex\\skills', origin: 'codex', scope: '全局' },
+    },
+  ],
+  plugins: [
+    {
+      name: 'codex@openai-codex', version: '1.0.6', installPath: 'C:\\Users\\u\\.claude\\plugins\\cache\\x',
+      installed: true, enabled: true, skillCount: 3,
+      source: { file: 'C:\\Users\\u\\.claude\\plugins\\installed_plugins.json', origin: 'claude', scope: '全局' },
+    },
+    {
+      name: 'api-development-kit@claude-code-workflows', installed: false, enabled: true, skillCount: 0,
+      source: { file: 'C:\\Users\\u\\.claude\\settings.json', origin: 'claude', scope: '全局' },
+    },
+  ],
+  problems: [
+    { file: 'C:\\Users\\u\\.codex\\broken.toml', detail: '解析失败: 第 3 行' },
+  ],
+}
