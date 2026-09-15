@@ -12,6 +12,13 @@
 | 压缩后 | 3.86 MB |
 | 对 exe 的影响 | +3.87 MB（29.50 → 33.37 MB） |
 
+## 只有 Windows 的
+
+这三个文件是 Windows 的。载荷会 embed 进**每个平台**的二进制,但 `HasBundledPayload`
+会去 tar 里找本平台的可执行文件——macOS / Linux 上找不到 `adb`,就当作没带,
+回落到 PATH。所以 Mac 用户仍要自己装 platform-tools;要给 Mac 也内置,
+往这个 tar 里再放一个 `adb`(无扩展名)即可,代码不用改。
+
 ## 里面只有三个文件
 
 ```

@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 )
 
 // 内置 adb:让一台干净的电脑装完就能连设备,不用另外去下 platform-tools。
@@ -42,15 +43,51 @@ const (
 	maxMemberSize = 64 << 20
 )
 
-// HasBundledPayload 这次构建里到底带没带 adb。
+// HasBundledPayload 这次构建里到底带没带**这个平台能用的** adb。
+//
+// 载荷是 embed 进二进制的,所以每个平台的构建里都有它 —— 但里面装的是 Windows 的
+// adb.exe 加两个 DLL。光看"文件在不在"会在 macOS 上答"有",然后 EnsureBundled
+// 把 8 MB 解到磁盘、翻遍每个成员找一个叫 adb 的、最后报「载荷里没有 adb」。
+// 发版的 macOS 流水线就是这么红的。
+//
+// 所以这里真去 tar 里看一眼有没有本平台的可执行文件。扫一次要过一遍 gzip,
+// 结果缓存住;载荷是编译期定死的,进程里不会变。
+//
 // 界面上要据此说人话:是"自带的"还是"得自己装一个"
 func HasBundledPayload() bool {
-	f, err := bundledFS.Open(payloadName)
+	payloadOnce.Do(func() {
+		payloadUsable = payloadHasExe()
+	})
+	return payloadUsable
+}
+
+var (
+	payloadOnce   sync.Once
+	payloadUsable bool
+)
+
+// payloadHasExe 载荷里有没有一个叫 adbExeName() 的普通文件
+func payloadHasExe() bool {
+	payload, err := bundledFS.ReadFile(payloadName)
 	if err != nil {
 		return false
 	}
-	_ = f.Close()
-	return true
+	zr, err := gzip.NewReader(bytes.NewReader(payload))
+	if err != nil {
+		return false
+	}
+	defer zr.Close()
+	want := adbExeName()
+	tr := tar.NewReader(zr)
+	for {
+		hdr, err := tr.Next()
+		if err != nil {
+			return false
+		}
+		if hdr.Typeflag == tar.TypeReg && filepath.Base(filepath.FromSlash(hdr.Name)) == want {
+			return true
+		}
+	}
 }
 
 // EnsureBundled 需要时把内置的 adb 解到 ~/.toolforge/platform-tools,返回 adb 的路径。
@@ -61,7 +98,7 @@ func HasBundledPayload() bool {
 // 那是用户自己放进去的,可能就是为了用某个特定版本,我们不该替他做主换掉。
 func EnsureBundled() (string, error) {
 	if !HasBundledPayload() {
-		return "", errors.New("这个版本没有内置 adb")
+		return "", errors.New("这个版本没有内置本平台的 adb")
 	}
 	dir, err := bundleDir()
 	if err != nil {

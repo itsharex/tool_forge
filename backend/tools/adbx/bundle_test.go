@@ -36,14 +36,17 @@ func TestEnsureBundledProducesRunnableAdb(t *testing.T) {
 	if !HasBundledPayload() {
 		t.Skip("这次构建没带内置 adb")
 	}
+	// 载荷目前只有 Windows 的三件套。HasBundledPayload 在别的平台会直接说没有,
+	// 上面那个 Skip 就拦住了;这一句是双保险 —— 万一将来载荷里混进了别的平台的
+	// 文件,也别在这儿把 8 MB 解出来只为跳过
+	if runtime.GOOS != "windows" {
+		t.Skip("载荷目前是 Windows 的三件套,别的平台不跑")
+	}
 	fakeHome(t)
 
 	exe, err := EnsureBundled()
 	if err != nil {
 		t.Fatal(err)
-	}
-	if runtime.GOOS != "windows" {
-		t.Skip("载荷目前是 Windows 的三件套,别的平台只验证解包")
 	}
 	out, _, err := RunLocal(context.Background(), 20*time.Second, exe, "version")
 	if err != nil {

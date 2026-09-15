@@ -34,6 +34,7 @@ import { conversations } from './fixtures.cjs'
 // 相对路径原样解析 —— CJS 缓存保证跟组件用的是同一个模块实例
 import { __emit, __calls, __last } from './stub.cjs'
 import { modelGroup } from '../src/profile/sections/aichat/modelGroup'
+import { sm2GenerateKeyPair, sm2Encrypt, sm2Decrypt, sm2Sign, sm2Verify } from '../src/tools/crypto-lab/lib/sm'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 let failed = false
@@ -815,6 +816,44 @@ async function main() {
       throw new Error('BLOB 没画出来')
     }
   })
+
+  // SM2 加解密与签名验签往返。
+  //
+  // sm-crypto 0.3.13 → 0.3.14 修的是 SM2 解密里的私钥可恢复漏洞(CVE-2026-23966),
+  // 改的正是 doDecrypt 那条路。加解密工具页不在冒烟里,光靠"版本号升了"说明不了
+  // 解出来的还是原文 —— 两种密文格式都要走一遍,解密逻辑是按 mode 分支的
+  try {
+    const kp = sm2GenerateKeyPair()
+    const plain = new TextEncoder().encode('国密往返:中文 + ascii + \u0000 字节')
+    for (const mode of ['C1C3C2', 'C1C2C3'] as const) {
+      const cipher = sm2Encrypt(kp.publicKey, plain, mode)
+      if (cipher.length <= plain.length) throw new Error(`${mode} 密文不该比明文短`)
+      const back = sm2Decrypt(kp.privateKey, cipher, mode)
+      if (new TextDecoder().decode(back) !== new TextDecoder().decode(plain)) {
+        throw new Error(`${mode} 解出来的和原文不一样`)
+      }
+    }
+    // 用错钥匙解必须失败或得不到原文,不能静默给个看着像的东西
+    const other = sm2GenerateKeyPair()
+    const cipher = sm2Encrypt(kp.publicKey, plain)
+    let wrongKeyLeaked = false
+    try {
+      const back = sm2Decrypt(other.privateKey, cipher)
+      wrongKeyLeaked = new TextDecoder().decode(back) === new TextDecoder().decode(plain)
+    } catch {
+      // 抛错是可接受的结果
+    }
+    if (wrongKeyLeaked) throw new Error('用别人的私钥居然解出了原文')
+
+    const sig = sm2Sign(kp.privateKey, plain, { publicKey: kp.publicKey })
+    if (!sm2Verify(kp.publicKey, plain, sig)) throw new Error('自己签的自己验不过')
+    const tampered = new Uint8Array(plain)
+    tampered[0] ^= 0xff
+    if (sm2Verify(kp.publicKey, tampered, sig)) throw new Error('改了一个字节还能验过')
+    console.log('  OK   SM2 加解密与签名往返')
+  } catch (e) {
+    note('SM2 加解密与签名往返', e)
+  }
 
   console.log(failed ? '\n有异常' : '\n全部通过')
   process.exit(failed ? 1 : 0)
