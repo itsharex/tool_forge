@@ -27,14 +27,31 @@ import type {
 import { useConfirm } from '@/components/ui/confirm'
 import { cn } from '@/lib/utils'
 
-/** 可手动勾选的能力。顺序即 UI 顺序 */
-const CAPABILITY_ITEMS: { key: Capability; label: string; hint: string }[] = [
+/**
+ * 可手动勾选的能力。顺序即 UI 顺序。
+ *
+ * 这张表必须囊括全部能力(types.ts 里的 Capability)。保存时能力集是按这张表过滤出来的,
+ * 漏掉一项,用户只要动过任意一个复选框,那一项就会被从能力集里抹掉 —— 而且界面上
+ * 连个勾都没有,没法再加回来。
+ */
+const CAPABILITY_ITEMS = [
   { key: 'vision', label: '看图', hint: '能接收图片输入' },
   { key: 'pdf', label: '原生 PDF', hint: '能直接吃 PDF 二进制,不用先抽成文本' },
   { key: 'reasoning', label: '思考', hint: '会输出思考过程' },
+  { key: 'tools', label: '工具', hint: '支持工具调用(function calling),能调 MCP 和内置工具' },
   { key: 'webSearch', label: '联网', hint: '支持供应商内置的联网搜索' },
   { key: 'imageGen', label: '生图', hint: '能生成图片' },
-]
+] as const satisfies readonly { key: Capability; label: string; hint: string }[]
+
+/**
+ * 编译期兜底:上面漏一项能力,这一行就过不了 tsc。
+ * 靠注释提醒不够 —— 它已经漏过一次(tools),而漏掉的症状是静悄悄的。
+ */
+type UncoveredCapability = Exclude<Capability, (typeof CAPABILITY_ITEMS)[number]['key']>
+const _capabilitiesAllCovered: UncoveredCapability extends never
+  ? true
+  : UncoveredCapability = true
+void _capabilitiesAllCovered
 
 export function ModelManageDrawer({
   provider,

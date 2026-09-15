@@ -118,7 +118,9 @@ export function ProviderDetail({
     return () => {
       alive = false
     }
-  }, [provider.id, provider.models.join(',')])
+    // 依赖里必须带上 modelOverrides:「能力修正」改的是它,models 一个字都没变。
+    // 只盯着 models 的话,刚存进去的修正要等下次重开应用才看得见 —— 当场看着像没生效
+  }, [provider.id, provider.models.join(','), JSON.stringify(provider.modelOverrides ?? {})])
 
   const groups = useMemo(() => {
     const m = new Map<string, string[]>()

@@ -2,6 +2,7 @@ package aichat
 
 import (
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -218,6 +219,81 @@ func normalizeModelID(id string) string {
 	return s
 }
 
+// newestKnownGen 各家能力表里最新的一代。比它更新的版本号会被折算到这一代来匹配。
+//
+// 每出一代新模型,这里跟着抬一格,顺手把下面的能力表补上真实参数 —— 折算只是兜底,
+// 保证没人被卡在"什么都不支持"的状态,不是让能力表可以不维护。
+//
+// 按前缀从具体到宽松排:"o" 只有一个字母,得让别的前缀先有机会命中。
+var newestKnownGen = []struct {
+	prefix string
+	newest float64
+	// as 折算后写回去的版本号文本,要和下面能力表里那条规则的写法对得上
+	as string
+}{
+	{"gemini-", 3, "3"},
+	{"gpt-", 5.2, "5.2"},
+	{"grok-", 4, "4"},
+	{"o", 4, "4"},
+}
+
+// foldFutureGeneration 把版本号比我们表里最新一代还新的模型,折算成那一代的 ID 再去匹配。
+//
+// 各家能力表都是按已知型号一条条列出来的,没列到的只能走保守兜底。OpenAI 那张表尤其
+// 吃亏:它没有任何无条件项,于是新一代(gpt-6-xxx)一条规则都命中不了,能力集是空的 ——
+// 界面上标签全没有、工具和思考开关全灰,看着像这个模型什么都不支持,其实只是我们没认出来。
+// 新一代不会比上一代更弱,按上一代对待远比什么都不给接近事实。
+//
+// 折算只影响用来匹配规则的 ID,请求里发出去的仍然是用户填的那个。
+func foldFutureGeneration(id string) string {
+	for _, g := range newestKnownGen {
+		gen, rest, ok := splitGeneration(id, g.prefix)
+		if !ok {
+			continue
+		}
+		// 第一个命中的前缀说了算,不再往下试更宽松的
+		if gen > g.newest {
+			return g.prefix + g.as + rest
+		}
+		return id
+	}
+	return id
+}
+
+// splitGeneration 从 prefix 后面取出版本号,返回版本号、剩下的后缀、是否取到。
+// "gpt-6-astra" + "gpt-" → (6, "-astra");紧跟在 prefix 后面的不是数字就取不到
+// ("omni-moderation" 不会被当成 o 系列的第 mni 代)。
+func splitGeneration(id, prefix string) (float64, string, bool) {
+	if !strings.HasPrefix(id, prefix) {
+		return 0, "", false
+	}
+	tail := id[len(prefix):]
+	isDigit := func(i int) bool { return i < len(tail) && tail[i] >= '0' && tail[i] <= '9' }
+
+	end, dotted := 0, false
+	for end < len(tail) {
+		if isDigit(end) {
+			end++
+			continue
+		}
+		// 小数点只吃一个,而且后面得真的跟着数字 —— "gpt-4." 里那个点属于后缀
+		if tail[end] == '.' && !dotted && isDigit(end+1) {
+			dotted = true
+			end++
+			continue
+		}
+		break
+	}
+	if end == 0 {
+		return 0, "", false
+	}
+	gen, err := strconv.ParseFloat(tail[:end], 64)
+	if err != nil {
+		return 0, "", false
+	}
+	return gen, tail[end:], true
+}
+
 // hasAnyPrefix 前缀命中任一即真
 func hasAnyPrefix(s string, prefixes ...string) bool {
 	for _, p := range prefixes {
@@ -248,7 +324,8 @@ func InferModelSpec(p Provider, modelID string) ModelSpec {
 	if hasOverride && ov.AliasOf != "" {
 		inferID = ov.AliasOf
 	}
-	id := normalizeModelID(inferID)
+	// 比表里最新一代还新的型号,折算到已知最新一代再去匹配,免得一条规则都命中不上
+	id := foldFutureGeneration(normalizeModelID(inferID))
 	spec := ModelSpec{
 		ID:           modelID,
 		Endpoint:     endpointFor(p.Type),
