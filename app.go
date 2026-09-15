@@ -133,6 +133,25 @@ func NewApp() *App {
 	// MCP 客户端:只读配置,连接是懒建的(第一次要用工具时才连)
 	mcpSvc := mcp.New()
 	aichat.SetMCPService(mcpSvc)
+	// 自带聊天也能用工具箱的工具 —— 进程内直连,不走 127.0.0.1 那个口。
+	//
+	// 这批是精选的,不是上面注册过的全部:
+	//   · 只挑只读的。它们都只是"看一眼"——列目录、读一个文件、解一段字节,
+	//     跑砸了最多是这一轮白问,不会动到证据。
+	//   · mobile-forensic 不给。它是 StreamHandler,跑起来是真做一次提取:
+	//     几分钟、往磁盘写几百 MB、还会先清空输出目录。什么时候跑这个,
+	//     该是人点的,不该由模型在一轮对话里自己决定。
+	// 默认关着,用户要在 AI 设置里明确打开(见 aichat.Config.LocalTools)
+	aichat.SetLocalTools([]aichat.LocalTool{
+		devicefs.NewHandler(dfs, system.GetPassword, devicefs.DefaultCacheDir()),
+		sqlitex.NewSearchHandler(),
+		sqlitex.NewReadHandler(),
+		plist.NewHandler(),
+		mmkv.NewHandler(),
+		protobuf.NewHandler(),
+		filehash.NewHandler(fh),
+		appsearch.NewHandler(apsearch),
+	})
 	return &App{
 		forensic:  fns,
 		appsearch: apsearch,
@@ -166,6 +185,9 @@ func (a *App) startup(ctx context.Context) {
 	// AI 聊天 service 需要持有 wails ctx 才能 EventsEmit
 	if a.aichat != nil {
 		a.aichat.SetWailsContext(ctx)
+		// 配置是懒加载的,而「工具箱工具」那个开关同步在加载里。不主动读一次的话,
+		// 用户没碰过 AI 设置就去点输入栏的工具开关,看到的会是"一个都没有"
+		_, _ = a.aichat.GetConfig()
 		// 老会话里内联的图片/附件搬进 blob 目录(一次性,自带完成标记)。
 		// 放后台:搬几 MB 很快,但没必要让窗口为它多等一会儿;
 		// 搬完之前打开会话也没问题 —— 内联和引用两种形态都读得动

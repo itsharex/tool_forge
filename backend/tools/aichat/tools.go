@@ -22,7 +22,11 @@ import (
 
 // maxToolRounds 一次提问最多允许模型连续调几轮工具。
 // 防的是模型陷在"调用 → 看结果 → 再调同一个"的循环里把 token 烧光。
-const maxToolRounds = 5
+//
+// 定在 10:接进来的工具箱工具是探索式的,"列目录 → 进下一层 → 读文件 → 再搜一下"
+// 四五轮只够走完一条路径,中途被截断的话模型只能拿半截信息硬答。
+// 上限本身是防跑飞的,不是干活的预算。
+const maxToolRounds = 10
 
 // Tool 一个可供模型调用的本地工具
 type Tool struct {
@@ -87,6 +91,10 @@ func listTools() []Tool {
 	for _, t := range builtinTools {
 		out = append(out, t)
 	}
+	// 工具箱自带的那批(用户在设置里打开才有);进程内直连,没有连不上的问题
+	for _, lt := range localToolList() {
+		out = append(out, wrapLocalTool(lt))
+	}
 	// 只取已连好的:这里在聊天请求的关键路径上,不能为了连一个冷服务器把消息卡住。
 	// 预热由 Service.Warm 在启动和配置变更时做。
 	if svc := currentMCP(); svc != nil {
@@ -102,6 +110,9 @@ func listTools() []Tool {
 // (MCP 的名字都带服务器前缀)。
 func findTool(name string) (Tool, bool) {
 	if t, ok := builtinTools[name]; ok {
+		return t, true
+	}
+	if t, ok := findLocalTool(name); ok {
 		return t, true
 	}
 	svc := currentMCP()

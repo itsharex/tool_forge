@@ -234,7 +234,13 @@ async function main() {
   })
 
   await mount('助手预设页', <AssistantsTab />)
-  await mount('默认与自动起标题页', <DefaultsTab />)
+  await mount('默认与自动起标题页', <DefaultsTab />, async () => {
+    const txt = document.body.textContent || ''
+    if (!txt.includes('工具箱工具')) throw new Error('没有工具箱工具开关')
+    // 打开这个开关等于让模型读本机文件、且读到的内容会外发。
+    // 代价必须写在开关旁边 —— 藏进文档就等于没说
+    if (!txt.includes('发给模型供应商')) throw new Error('没有说明工具结果会外发')
+  })
 
   // 4) 导出弹窗:切勾选项要重新渲染预览,点保存要走"用户取消"那条分支
   await mount(

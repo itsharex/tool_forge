@@ -82,6 +82,8 @@ func (s *Service) ensureLoaded() error {
 	}
 	s.providers = ps
 	s.config = c
+	// 工具声明在协议层深处拿不到 config,这里把开关同步到包级状态
+	SetLocalToolsEnabled(c.LocalTools)
 	s.loaded = true
 	return nil
 }
@@ -411,6 +413,7 @@ func (s *Service) SaveConfig(c Config) error {
 	// 侧边栏顺序全乱。这里显式留下它。
 	c.ConversationOrder = s.config.ConversationOrder
 	s.config = c
+	SetLocalToolsEnabled(c.LocalTools)
 	return saveConfig(c)
 }
 

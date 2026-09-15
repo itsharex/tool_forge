@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { MessagesSquare, Save, Sparkles } from 'lucide-react'
+import { MessagesSquare, Save, Sparkles, Wrench } from 'lucide-react'
 import {
   ListAIProviders,
   GetAIConfig,
@@ -19,6 +19,7 @@ export function DefaultsTab() {
   const [autoTitle, setAutoTitle] = useState(true)
   const [titleProviderId, setTitleProviderId] = useState('')
   const [titleModelId, setTitleModelId] = useState('')
+  const [localTools, setLocalTools] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export function DefaultsTab() {
       setAutoTitle(!cfg.autoTitleOff)
       setTitleProviderId(cfg.titleProviderId ?? '')
       setTitleModelId(cfg.titleModelId ?? '')
+      setLocalTools(!!cfg.localTools)
     })()
   }, [])
 
@@ -48,6 +50,9 @@ export function DefaultsTab() {
       // "两个字段是不是都在" —— 干脆在这里就不让它成形
       titleProviderId: titleModelId ? titleProviderId : '',
       titleModelId: titleProviderId ? titleModelId : '',
+      // 后端是整个结构体盖上去的,这里漏一个字段就等于把它关掉 ——
+      // 保存个默认模型,工具箱工具就被顺手关了
+      localTools,
     } as unknown as never)) as unknown as string
     if (err) {
       await dialog({ title: '保存失败', message: err, confirmLabel: '知道了' })
@@ -184,6 +189,43 @@ export function DefaultsTab() {
             </p>
           </div>
         )}
+      </div>
+
+      <div className="rounded-lg border border-border bg-card p-5">
+        <div className="mb-3 flex items-center gap-2 text-sm font-medium">
+          <Wrench className="h-4 w-4 text-info" />
+          工具箱工具
+        </div>
+        <label className="flex cursor-pointer items-start gap-2">
+          <input
+            type="checkbox"
+            checked={localTools}
+            onChange={(e) => setLocalTools(e.target.checked)}
+            className="mt-0.5 h-3.5 w-3.5 shrink-0"
+          />
+          <span className="text-xs">
+            允许模型调用工具箱自带的工具
+            <span className="mt-0.5 block text-[11px] text-muted-foreground">
+              真机浏览、SQLite 搜索与读取、plist / MMKV / protobuf 解析、文件哈希、包名搜索。
+              还要在对话输入栏打开「工具」开关才会真的带上。
+            </span>
+          </span>
+        </label>
+        {/* 这个开关的代价必须写在开关旁边,不能藏在文档里:
+            工具读回来的内容会随下一轮请求发给模型供应商 */}
+        <p className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-2.5 text-[11px] text-amber-700 dark:text-amber-400">
+          打开后模型能读本机文件和当前连着的设备,<strong>读到的内容会随下一轮请求发给模型供应商</strong>。
+          办案数据要不要出本机,自己掂量。
+        </p>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          只给了只读的那批 —— 跑砸了最多这一轮白问,不会动到证据。
+          「移动取证」没有放进来:它跑起来是真做一次提取,几分钟、往磁盘写几百 MB、
+          还会先清空输出目录,该由人点。
+        </p>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          这和「本地 API」里的工具开关是两回事:那边是放给外部 agent 走网络调用的,
+          这边只在本进程内,不开端口。
+        </p>
       </div>
     </div>
   )

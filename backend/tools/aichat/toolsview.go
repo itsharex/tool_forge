@@ -37,6 +37,15 @@ func ToolsView() ChatToolsView {
 		})
 	}
 
+	for _, lt := range localToolList() {
+		t := wrapLocalTool(lt)
+		view.Tools = append(view.Tools, ChatToolInfo{
+			Name:        t.Name,
+			Description: t.Description,
+			Source:      LocalToolSource,
+		})
+	}
+
 	svc := currentMCP()
 	if svc == nil {
 		sortTools(view.Tools)

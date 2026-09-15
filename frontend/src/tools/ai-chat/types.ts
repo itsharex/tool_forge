@@ -88,6 +88,11 @@ export interface AIConfig {
   /** 起标题专用的模型;两个都填才生效,留空就用会话自己的模型 */
   titleProviderId?: string
   titleModelId?: string
+  /**
+   * 允许聊天调用工具箱自带的工具(真机浏览、SQLite、plist 解析……)。
+   * 存的是"开",缺省 = 关 —— 这批工具读本机文件和连着的设备,得用户明确打开
+   */
+  localTools?: boolean
   /** 会话拖动排序;由侧边栏写,设置页只读不写 */
   conversationOrder?: string[]
 }

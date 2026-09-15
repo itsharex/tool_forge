@@ -335,6 +335,12 @@ type Config struct {
 	// 留空就用会话自己的模型。用意是拿一个便宜的小模型干这件小事
 	TitleProviderID string `json:"titleProviderId,omitempty"`
 	TitleModelID    string `json:"titleModelId,omitempty"`
+	// LocalTools 允许聊天调用工具箱自带的那批工具(真机浏览、SQLite、plist 解析……)。
+	//
+	// 存的是"开"而不是"关",零值必须落在关那一侧:这批工具读的是本机文件和连着的
+	// 设备,而工具返回的内容会随下一轮请求发给模型供应商。这个决定得用户自己做,
+	// 不能靠老配置反序列化出来的零值替他做。
+	LocalTools bool `json:"localTools,omitempty"`
 	// ConversationOrder 用户拖出来的会话顺序(会话 ID 列表)。
 	//
 	// 放在这里而不是每条会话里加一个 SortOrder 字段:会话文件带着全部消息,
