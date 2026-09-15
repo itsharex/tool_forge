@@ -6,7 +6,10 @@ import {
   SetForensicBinaryPath,
 } from '../../../wailsjs/go/main/App'
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime'
+import { Settings } from 'lucide-react'
 import { useForensicStore } from '@/stores/forensic'
+import { Button } from '@/components/ui/button'
+import { ConfigDialog } from './ConfigDialog'
 import { SetupGuide } from './SetupGuide'
 import { ForensicForm } from './ForensicForm'
 import { OutputPane } from './OutputPane'
@@ -35,12 +38,14 @@ interface LogEvent {
 
 export default function MobileForensic() {
   const binaryPath = useForensicStore((s) => s.binaryPath)
+  const cliEnabled = useForensicStore((s) => s.cliEnabled)
   const pushHistory = useForensicStore((s) => s.pushHistory)
 
   // go-forensic 装没装。只有真要用它的时候才拦人 —— 默认的内置引擎
   // 不依赖任何外部程序,再拿"先去配置 go-forensic"挡在前面纯属白挡
   const [cliReady, setCliReady] = useState(false)
   const [form, setForm] = useState<FormState>(defaultFormState)
+  const [configOpen, setConfigOpen] = useState(false)
   const [status, setStatus] = useState<RunStatus>('idle')
   const [logs, setLogs] = useState<LogEntry[]>([])
   const jobIdRef = useRef<string>('')
@@ -112,17 +117,33 @@ export default function MobileForensic() {
     resetLogs()
   }
 
-  const blocked = needsCLI(form.platform, form.engine) && !cliReady
+  // 关掉 go-forensic 时,把已经选中的 cli 引擎退回内置 —— 选择器没了而 engine
+  // 还停在 cli 的话,页面会卡在一条用户已经看不见入口的失败路径上
+  useEffect(() => {
+    if (!cliEnabled && form.engine === 'cli') {
+      setForm((f) => ({ ...f, engine: 'builtin' }))
+    }
+  }, [cliEnabled, form.engine])
+
+  const blocked = cliEnabled && needsCLI(form.platform, form.engine) && !cliReady
 
   return (
     <ToolShell
       title={meta.title}
       description={meta.description}
       onClear={resetAll}
+      actions={
+        <Button variant="ghost" size="sm" onClick={() => setConfigOpen(true)} title="取证配置">
+          <Settings className="h-3.5 w-3.5" />
+          配置
+        </Button>
+      }
     >
+      <ConfigDialog open={configOpen} onClose={() => setConfigOpen(false)} />
       <div className="flex flex-col gap-4">
         {blocked && (
           <SetupGuide
+            onConfigure={() => setConfigOpen(true)}
             onReady={() => setCliReady(true)}
             onUseBuiltin={
               form.platform === 'android'
@@ -133,6 +154,7 @@ export default function MobileForensic() {
         )}
         <ForensicForm
           form={form}
+          cliEnabled={cliEnabled}
           onChange={setForm}
           onRun={handleRun}
           disabled={status === 'running'}

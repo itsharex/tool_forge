@@ -34,6 +34,8 @@ const PATH_PLACEHOLDER: Record<Platform, string> = {
 
 interface Props {
   form: FormState
+  /** go-forensic 启用了才给引擎选择;没启用就一直走内置 */
+  cliEnabled: boolean
   onChange: (next: FormState) => void
   onRun: () => void
   disabled: boolean
@@ -41,7 +43,7 @@ interface Props {
   blockReason?: string
 }
 
-export function ForensicForm({ form, onChange, onRun, disabled, blockReason }: Props) {
+export function ForensicForm({ form, cliEnabled, onChange, onRun, disabled, blockReason }: Props) {
   const confirm = useConfirm()
   const defaultSshAddr = useForensicStore((s) => s.defaultSshAddr)
   const defaultOutputBase = useForensicStore((s) => s.defaultOutputBase)
@@ -151,14 +153,18 @@ export function ForensicForm({ form, onChange, onRun, disabled, blockReason }: P
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
         <span className="text-xs font-medium text-muted-foreground">任务参数</span>
         <div className="flex items-center gap-2">
-          <ModeToggle
-            value={form.engine}
-            onChange={(e) => setField('engine', e as Engine)}
-            options={[
-              { value: 'builtin', label: '内置' },
-              { value: 'cli', label: 'go-forensic' },
-            ]}
-          />
+          {/* go-forensic 是可选的备选引擎,没启用就不摆这个选择题 ——
+              两个平台的提取都已内置,大多数人根本没装过它 */}
+          {cliEnabled && (
+            <ModeToggle
+              value={form.engine}
+              onChange={(e) => setField('engine', e as Engine)}
+              options={[
+                { value: 'builtin', label: '内置' },
+                { value: 'cli', label: 'go-forensic' },
+              ]}
+            />
+          )}
           <ModeToggle
             value={form.platform}
             onChange={(p) => setField('platform', p as Platform)}

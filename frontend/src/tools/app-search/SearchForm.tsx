@@ -15,9 +15,13 @@ interface Props {
   onChange: (next: FormState) => void
   onRun: () => void
   disabled: boolean
+  /** 需要配置的源是否已经配好;null = 还在查 */
+  configured: boolean | null
+  /** 打开配置弹窗 */
+  onConfigure: () => void
 }
 
-export function SearchForm({ form, onChange, onRun, disabled }: Props) {
+export function SearchForm({ form, onChange, onRun, disabled, configured, onConfigure }: Props) {
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     onChange({ ...form, [key]: value })
   }
@@ -136,8 +140,25 @@ export function SearchForm({ form, onChange, onRun, disabled }: Props) {
                         </span>
                       )}
                     </div>
-                    {s.hint && (
-                      <div className="truncate text-xs text-muted-foreground">{s.hint}</div>
+                    {/* 要配置的源直接把当前状态说出来,并且就地给入口 ——
+                        原来这里写死一句"Profile 里配置",既不告诉你配没配,
+                        也要你自己去找那一页 */}
+                    {s.needsConfig && configured === false ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          onConfigure()
+                        }}
+                        className="truncate text-xs text-amber-700 underline underline-offset-2 dark:text-amber-400"
+                      >
+                        未配置登录态 · 点此配置
+                      </button>
+                    ) : (
+                      s.hint && (
+                        <div className="truncate text-xs text-muted-foreground">{s.hint}</div>
+                      )
                     )}
                   </div>
                 </label>

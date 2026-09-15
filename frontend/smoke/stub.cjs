@@ -43,6 +43,12 @@ const count = (name) => {
 const last = {}
 
 const special = {
+  // ---- 取证 / 包名搜索的配置 ----
+  GetForensicConfig: () => Promise.resolve({ binPath: '', enabled: false, defaultSshAddr: '' }),
+  SaveForensicConfig: () => Promise.resolve(),
+  HasQimaiPhpSessID: () => Promise.resolve(false),
+  SaveQimaiPhpSessID: () => Promise.resolve(),
+
   // ---- AI 配置 ----
   ListAIProviders: () => Promise.resolve(fx.providers),
   ListAIProviderKeys: (id) => Promise.resolve(fx.keysById[id] || []),

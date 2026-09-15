@@ -20,7 +20,6 @@ import { AIUsageSection } from './sections/AIUsage'
 import { BasicSection } from './sections/Basic'
 import { ClipboardSection } from './sections/Clipboard'
 import { DataSection } from './sections/Data'
-import { ExternalSection } from './sections/External'
 import { HotkeysSection } from './sections/Hotkeys'
 import { LocalAPISection } from './sections/LocalAPI'
 import { MCPSection } from './sections/MCP'
@@ -28,7 +27,6 @@ import { PlaceholderSection } from './sections/Placeholder'
 
 type SectionId =
   | 'basic'
-  | 'external'
   | 'clipboard'
   | 'hotkeys'
   | 'ai'
@@ -48,7 +46,6 @@ interface Section {
 
 const SECTIONS: Section[] = [
   { id: 'basic', label: '基础信息', icon: User },
-  { id: 'external', label: '外部工具', icon: Plug },
   { id: 'clipboard', label: '剪贴板', icon: ClipboardList },
   { id: 'hotkeys', label: '快捷键', icon: Keyboard },
   { id: 'ai', label: 'AI 配置', icon: Bot },
@@ -105,8 +102,6 @@ export function Profile() {
       <div className="flex-1 overflow-auto p-6">
         {active === 'basic' ? (
           <BasicSection />
-        ) : active === 'external' ? (
-          <ExternalSection />
         ) : active === 'clipboard' ? (
           <ClipboardSection />
         ) : active === 'hotkeys' ? (

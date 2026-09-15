@@ -1,9 +1,12 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { Settings } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { ToolShell } from '@/components/tool/ToolShell'
-import { SearchApp } from '../../../wailsjs/go/main/App'
+import { SearchApp, HasQimaiPhpSessID } from '../../../wailsjs/go/main/App'
 import type { appsearch } from '../../../wailsjs/go/models'
 import { SearchForm, type FormState } from './SearchForm'
 import { ResultTable } from './ResultTable'
+import { ConfigDialog } from './ConfigDialog'
 import { meta } from './meta'
 
 const initialForm: FormState = {
@@ -19,6 +22,21 @@ export default function AppSearch() {
   const [items, setItems] = useState<appsearch.SearchResultItem[]>([])
   const [statuses, setStatuses] = useState<appsearch.SourceStatus[]>([])
   const [error, setError] = useState<string>('')
+  const [configOpen, setConfigOpen] = useState(false)
+  // 七麦登录态配没配。源列表要据此把提示换成可点的"去配置"
+  const [configured, setConfigured] = useState<boolean | null>(null)
+
+  const refreshConfigured = useCallback(async () => {
+    try {
+      setConfigured((await HasQimaiPhpSessID()) as unknown as boolean)
+    } catch {
+      setConfigured(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void refreshConfigured()
+  }, [refreshConfigured])
 
   const run = useCallback(async () => {
     setRunning(true)
@@ -55,9 +73,27 @@ export default function AppSearch() {
       title={meta.title}
       description={meta.description}
       onClear={clear}
+      actions={
+        <Button variant="ghost" size="sm" onClick={() => setConfigOpen(true)} title="包名搜索配置">
+          <Settings className="h-3.5 w-3.5" />
+          配置
+        </Button>
+      }
     >
+      <ConfigDialog
+        open={configOpen}
+        onClose={() => setConfigOpen(false)}
+        onChanged={() => void refreshConfigured()}
+      />
       <div className="flex flex-col gap-4">
-        <SearchForm form={form} onChange={setForm} onRun={run} disabled={running} />
+        <SearchForm
+          form={form}
+          onChange={setForm}
+          onRun={run}
+          disabled={running}
+          configured={configured}
+          onConfigure={() => setConfigOpen(true)}
+        />
         {error && (
           <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
             {error}

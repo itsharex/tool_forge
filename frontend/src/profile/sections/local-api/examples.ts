@@ -53,7 +53,7 @@ export const TOOL_EXAMPLES: Record<string, ToolExampleSet> = {
       },
       {
         label: 'iOS 七麦',
-        hint: '需要先在"外部工具"配好七麦 PHPSESSID',
+        hint: '需要先在包名搜索页的「配置」里填好七麦 PHPSESSID',
         body: { keyword: '微信', sources: ['qimai_ios'], country: 'cn' },
       },
       {
@@ -108,7 +108,7 @@ export const TOOL_EXAMPLES: Record<string, ToolExampleSet> = {
     notes: [
       'sources 取值: itunes · qimai_ios · qimai_android · yingyongbao · googleplay',
       'Android market ID: 华为=6 · 应用宝=3 · 小米=4 · OPPO=9 · VIVO=8 · 魅族=7 · 百度=2 · 360=1 · 豌豆荚=5 · GooglePlay=10 · 鸿蒙=11',
-      '七麦的两个源(qimai_ios / qimai_android)需要在 Profile → 外部工具里配好 PHPSESSID,否则会返回登录失败',
+      '七麦的两个源(qimai_ios / qimai_android)需要在包名搜索页的「配置」里填好 PHPSESSID,否则会返回登录失败',
       '所有源并发执行,响应里 statuses 字段会列出每个源的执行结果(成功 / 失败原因 / 命中数)',
     ],
   },
@@ -180,7 +180,7 @@ export const TOOL_EXAMPLES: Record<string, ToolExampleSet> = {
       '事件格式: data: {"type":"log","data":{...}}\\n\\n; type 取值: started / log / done / error',
       'log 事件的 data 包含 stream(stdout/stderr) 和 line;done 事件的 data 含 exitCode 和 canceled',
       '客户端关闭连接(curl Ctrl+C / EventSource.close) → 后端自动 Cancel,杀掉 go-forensic 进程',
-      '需要先在 Profile → 外部工具中配置 go-forensic 可执行文件路径,否则会立刻返回 error',
+      '需要先在移动取证页的「配置」里填好 go-forensic 可执行文件路径,否则会立刻返回 error',
       '⚠ 此工具会调用外部 CLI 访问 Android / iOS 设备数据,涉及隐私敏感操作,强烈建议在 "本地 API" 里开启 Token 鉴权',
     ],
   },

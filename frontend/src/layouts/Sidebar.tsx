@@ -261,7 +261,7 @@ export function Sidebar({ onOpenCommandPalette }: SidebarProps = {}) {
       </nav>
 
       <div className="border-t border-border p-2">
-        {/* 这一栏进的是设置页(外部工具 / 快捷键 / AI 配置 / MCP / 本地 API / 数据)。
+        {/* 这一栏进的是设置页(快捷键 / AI 配置 / MCP / 本地 API / 数据)。
             以前显示的是用户昵称,默认「开发者」,配个头像图标 ——
             第一次打开的人根本不会想到设置藏在一个看着像账号的入口后面。
             昵称留在设置里的「基础信息」,导航栏只说它通向哪儿 */}

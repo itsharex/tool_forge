@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { AlertCircle, CheckCircle2, Cpu, RefreshCw, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CheckForensic } from '../../../wailsjs/go/main/App'
@@ -8,6 +7,8 @@ import type { forensic } from '../../../wailsjs/go/models'
 
 interface Props {
   onReady: (info: forensic.Info) => void
+  /** 打开本页的配置弹窗。以前这里是一个跳到设置页的链接 —— 为填一个路径换一整页 */
+  onConfigure: () => void
   /**
    * 一键换回内置引擎。
    *
@@ -17,7 +18,7 @@ interface Props {
   onUseBuiltin?: () => void
 }
 
-export function SetupGuide({ onReady, onUseBuiltin }: Props) {
+export function SetupGuide({ onReady, onConfigure, onUseBuiltin }: Props) {
   const binaryPath = useForensicStore((s) => s.binaryPath)
   const cache = useForensicStore((s) => s.checkCache)
   const setCheckCache = useForensicStore((s) => s.setCheckCache)
@@ -99,11 +100,13 @@ export function SetupGuide({ onReady, onUseBuiltin }: Props) {
               改用内置引擎
             </Button>
           )}
-          <Button asChild size="sm" variant={onUseBuiltin ? 'outline' : 'default'}>
-            <Link to="/profile">
-              <Settings className="h-3.5 w-3.5" />
-              去配置
-            </Link>
+          <Button
+            size="sm"
+            variant={onUseBuiltin ? 'outline' : 'default'}
+            onClick={onConfigure}
+          >
+            <Settings className="h-3.5 w-3.5" />
+            去配置
           </Button>
           <Button variant="outline" size="sm" onClick={() => doCheck(true)} disabled={checking}>
             <RefreshCw className={checking ? 'h-3.5 w-3.5 animate-spin' : 'h-3.5 w-3.5'} />
@@ -117,7 +120,7 @@ export function SetupGuide({ onReady, onUseBuiltin }: Props) {
             <p>方案 A：本地有 Go 环境，可直接安装到 PATH</p>
             <pre className="rounded bg-muted p-2 font-mono text-[11px]">go install gitlab.forensix.cn/GoldenEyes/mobile-forensic/fastplugindev/go-forensic@latest</pre>
             <p>方案 B：直接指定已编译好的 exe 路径（推荐）</p>
-            <p>在 Profile → 外部工具中填入 <code>go-forensic.exe</code> 的完整路径即可。</p>
+            <p>点上面的「去配置」,填入 <code>go-forensic</code> 可执行文件的完整路径即可。</p>
           </div>
         </details>
       </div>

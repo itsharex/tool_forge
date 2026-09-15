@@ -24,6 +24,7 @@ import MmkvTool from '../src/tools/mmkv/index'
 import PlistTool from '../src/tools/plist/index'
 import DeviceBrowser from '../src/tools/device-browser/index'
 import MobileForensic from '../src/tools/mobile-forensic/index'
+import AppSearch from '../src/tools/app-search/index'
 import SQLiteSearch from '../src/tools/sqlite-search/index'
 import { ConfirmProvider } from '../src/components/ui/confirm'
 import { conversations } from './fixtures.cjs'
@@ -615,7 +616,7 @@ async function main() {
   // 这一页原来整个被"先去配置 go-forensic"挡在前面 —— 内置实现做出来之后
   // 那道门就是白挡一道;而挡住之后连切引擎的开关都摸不到,是条死路
   // SetupGuide 里的「去配置」是个 <Link>,没有 Router 上下文会当场炸
-  await mount('移动取证 · 内置引擎不被拦', <MemoryRouter><MobileForensic /></MemoryRouter>, async () => {
+  await mount('移动取证 · 默认不露出 go-forensic', <MemoryRouter><MobileForensic /></MemoryRouter>, async () => {
     const txt = () => document.body.textContent || ''
     if (!txt().includes('任务参数')) throw new Error('表单没出来,还被 go-forensic 的配置页挡着')
     if (txt().includes('这次的选择需要 go-forensic')) {
@@ -623,15 +624,41 @@ async function main() {
     }
     if (!txt().includes('内置引擎')) throw new Error('执行预览没说清楚这次走的是内置')
 
-    // 切到 go-forensic:桩里它是找不到的,这时候才该拦,而且要给得回去
-    await mustClick('go-forensic')
-    if (!txt().includes('这次的选择需要 go-forensic')) {
-      throw new Error('选了 go-forensic 却没提示它还没配置')
+    // go-forensic 默认不启用:两个平台的提取都已内置,绝大多数人没装过它,
+    // 不该让每个人先面对一道「内置 / go-forensic」的选择题
+    if (btn('go-forensic')) {
+      throw new Error('没启用 go-forensic 却摆出了引擎选择')
     }
-    await mustClick('改用内置引擎')
-    if (txt().includes('这次的选择需要 go-forensic')) {
-      throw new Error('点了「改用内置引擎」还没退回来 —— 那就成死路了')
+
+    // 配置入口在页面自己身上,不再跳设置页
+    await mustClick('取证配置')
+    if (!txt().includes('默认 iOS SSH 地址')) {
+      throw new Error('配置弹窗里没有默认 SSH 地址 —— 它不属于 go-forensic,不能跟着一起消失')
     }
+    if (!txt().includes('先把上面检测通过才能启用')) {
+      throw new Error('检测没过时「启用」应当是点不动的,否则这个开关就是在撒谎')
+    }
+    const box = document.querySelector(
+      'input[type=checkbox]:disabled',
+    ) as HTMLInputElement | null
+    if (!box) throw new Error('检测没过,启用开关却是可点的')
+    await mustClick('关闭（Esc）')
+  })
+
+  // 20) 包名搜索:七麦要登录态,配置入口和"配没配"都得在这一页上看得见
+  await mount('包名搜索 · 配置入口', <MemoryRouter><AppSearch /></MemoryRouter>, async () => {
+    const txt = () => document.body.textContent || ''
+    // 桩里 HasQimaiPhpSessID 返回 false —— 源列表要当场说清楚,并且就地给入口。
+    // 原来这里写死一句"Profile 里配置",既不说配没配,也要自己去找那一页
+    if (!txt().includes('未配置登录态')) {
+      throw new Error('七麦源没有显示未配置状态')
+    }
+    await mustClick('未配置登录态 · 点此配置')
+    if (!txt().includes('PHPSESSID')) throw new Error('点了提示没打开配置弹窗')
+    await mustClick('关闭（Esc）')
+
+    await mustClick('包名搜索配置')
+    if (!txt().includes('系统凭据库')) throw new Error('配置弹窗没说清楚密钥存在哪')
   })
 
   // 20) SQLite 搜索:命中要给出整行,读不了的库要摆出来,点表名能翻表。

@@ -59,6 +59,8 @@ type Service struct {
 	mu       sync.Mutex
 	jobs     map[string]*job
 	binPath  string
+	// config 落盘的那份配置(见 config.go);binPath 是它里面那一项的内存副本
+	config Config
 	// subscribers 给 HTTP SSE 等"非 Wails 前端"用的订阅者。
 	// emit 时既调 wailsruntime.EventsEmit(给桌面工具页),也 fan-out 到此处的 channel。
 	subscribers map[string][]chan EventEnvelope
@@ -78,10 +80,14 @@ type EventEnvelope struct {
 
 // New 新建服务
 func New() *Service {
-	return &Service{
+	s := &Service{
 		jobs:        make(map[string]*job),
 		subscribers: make(map[string][]chan EventEnvelope),
 	}
+	// 从磁盘恢复:不这么做的话,用户没打开过移动取证页面时后端就不知道
+	// 他把 go-forensic 装在哪,MCP 那条路只能退回 PATH 查找
+	s.restoreConfig()
+	return s
 }
 
 // Subscribe 订阅指定 jobID 的事件流。
@@ -313,7 +319,7 @@ func (s *Service) pushLine(jobID, stream, line string) {
 func (s *Service) runCLI(args []string) (string, error) {
 	bin := s.resolveBinary()
 	if _, err := exec.LookPath(bin); err != nil {
-		return "", fmt.Errorf("找不到 go-forensic，请在 Profile → 外部工具 中配置路径")
+		return "", fmt.Errorf("找不到 go-forensic，请在移动取证页右上角的「配置」里填写它的完整路径")
 	}
 
 	jobID := newJobID()

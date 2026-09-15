@@ -11,13 +11,15 @@ export interface SourceOption {
   platform: 'ios' | 'android'
   hint?: string
   enabled: boolean // 未实现的源先禁用
+  /** 用不了之前要先配置。界面据此把提示换成"未配置 · 去配置" */
+  needsConfig?: boolean
 }
 
 // 源列表顺序即前端展示顺序
 export const SOURCES: SourceOption[] = [
   { id: 'itunes', label: 'Apple Store', platform: 'ios', hint: '官方 iTunes Search', enabled: true },
   { id: 'qimai_ios', label: '七麦 iOS', platform: 'ios', hint: '无需登录', enabled: true },
-  { id: 'qimai_android', label: '七麦 Android', platform: 'android', hint: '需 PHPSESSID，Profile 里配置', enabled: true },
+  { id: 'qimai_android', label: '七麦 Android', platform: 'android', hint: '需七麦登录态', enabled: true, needsConfig: true },
   { id: 'yingyongbao', label: '应用宝', platform: 'android', hint: '腾讯，无需登录', enabled: true },
   { id: 'googleplay', label: 'Google Play', platform: 'android', hint: '需代理/TUN', enabled: true },
 ]

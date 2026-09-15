@@ -100,26 +100,39 @@ export function ResultTable({ items, statuses }: Props) {
 function SourceBar({ statuses }: { statuses: appsearch.SourceStatus[] }) {
   const labelOf = (id: string) => SOURCES.find((s) => s.id === id)?.label ?? id
 
+  const failed = statuses.filter((st) => !st.ok && st.error)
+
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {statuses.map((st) => (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap gap-1.5">
+        {statuses.map((st) => (
+          <div
+            key={st.source}
+            className={cn(
+              'flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs',
+              st.ok
+                ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400'
+                : 'border-destructive/30 bg-destructive/5 text-destructive'
+            )}
+          >
+            {st.ok ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+            <span className="font-medium">{labelOf(st.source)}</span>
+            {st.ok && <span className="text-muted-foreground">· {st.count}</span>}
+          </div>
+        ))}
+      </div>
+      {/* 失败原因原来只在 title 里 —— 一个源挂了,界面上就是个小红药丸,
+          得把鼠标悬上去才知道为什么。这类原因("登录态过期"之类)恰恰是
+          用户当场就能处理的,藏起来没有道理 */}
+      {failed.map((st) => (
         <div
           key={st.source}
-          className={cn(
-            'flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs',
-            st.ok
-              ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400'
-              : 'border-destructive/30 bg-destructive/5 text-destructive'
-          )}
-          title={st.error}
+          className="flex items-start gap-1.5 text-[11px] text-destructive"
         >
-          {st.ok ? (
-            <Check className="h-3 w-3" />
-          ) : (
-            <AlertCircle className="h-3 w-3" />
-          )}
-          <span className="font-medium">{labelOf(st.source)}</span>
-          {st.ok && <span className="text-muted-foreground">· {st.count}</span>}
+          <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
+          <span>
+            <span className="font-medium">{labelOf(st.source)}</span>：{st.error}
+          </span>
         </div>
       ))}
     </div>

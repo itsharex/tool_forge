@@ -64,10 +64,10 @@ type qimaiAndroidDetailResp struct {
 }
 
 // ErrQimaiPHPSessIDRequired 用户未在 Profile 配置 PHPSESSID
-var ErrQimaiPHPSessIDRequired = errors.New("七麦 Android 搜索需要 PHPSESSID，请在个人主页 → 外部工具 里配置")
+var ErrQimaiPHPSessIDRequired = errors.New("七麦 Android 搜索需要 PHPSESSID，请在包名搜索页右上角的「配置」里填写")
 
 // ErrQimaiPHPSessIDExpired 后端收到 is_logout=1 或结果异常
-var ErrQimaiPHPSessIDExpired = errors.New("七麦 PHPSESSID 已失效，请在个人主页 → 外部工具 里重新录入")
+var ErrQimaiPHPSessIDExpired = errors.New("七麦 PHPSESSID 已失效，请在包名搜索页右上角的「配置」里重新录入")
 
 // searchQimaiAndroid 七麦 Android 搜索 + 并发回填每条的真实包名（/andapp/detail）。
 func searchQimaiAndroid(ctx context.Context, client *http.Client, keyword, country string, market int, phpSessID string) ([]SearchResultItem, error) {

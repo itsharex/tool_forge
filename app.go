@@ -796,6 +796,16 @@ func (a *App) SetForensicBinaryPath(path string) {
 	a.forensic.SetBinaryPath(path)
 }
 
+// GetForensicConfig 取证配置(go-forensic 路径与启用状态、默认 SSH 地址)
+func (a *App) GetForensicConfig() forensic.Config {
+	return a.forensic.Config()
+}
+
+// SaveForensicConfig 保存取证配置并落盘
+func (a *App) SaveForensicConfig(c forensic.Config) error {
+	return a.forensic.SetConfig(c)
+}
+
 // RunForensic 启动取证命令，返回 jobID；后续通过 forensic:log / forensic:done 事件推送
 func (a *App) RunForensic(args []string) (string, error) {
 	return a.forensic.Run(args)
