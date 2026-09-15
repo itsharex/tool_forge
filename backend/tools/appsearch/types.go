@@ -73,6 +73,12 @@ type SourceStatus struct {
 	OK     bool     `json:"ok"`
 	Error  string   `json:"error,omitempty"`
 	Count  int      `json:"count"`
+	// Note 非致命说明:这一路确实成功了,但结果为空而我们知道大概率不是"真的没有"。
+	//
+	// 和 Error 分开,是因为它不该把这个源标成失败 —— 搜一个不存在的词本来就该是 0 条。
+	// 但"接口回了成功、零条"在界面上和"真的没这个 App"长得一模一样,
+	// 不给一句话,用户只会反复换关键词。
+	Note string `json:"note,omitempty"`
 }
 
 // SearchResponse 总响应：结果已合并并去重

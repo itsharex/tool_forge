@@ -9,7 +9,9 @@ import (
 	"strconv"
 )
 
-const qimaiBase = "https://api.qimai.cn"
+// qimaiBase 七麦 API 根地址。用 var 而不是 const 是为了让测试能指到本地假服务器 ——
+// 这个包最容易出问题的恰恰是「响应形状变了」,而那只能靠喂假响应来钉住
+var qimaiBase = "https://api.qimai.cn"
 
 type qimaiIOSEntry struct {
 	AppInfo struct {

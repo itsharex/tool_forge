@@ -55,6 +55,7 @@ export function ConfigDialog({
       onClose={onClose}
       title="包名搜索配置"
       description="只有七麦 Android 源需要配置;其余几个源开箱即用"
+      width="w-[560px]"
       footer={
         <Button size="sm" onClick={onClose}>
           完成
@@ -65,20 +66,24 @@ export function ConfigDialog({
         <div>
           <div className="font-medium">七麦登录态</div>
           <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-            七麦 Android 搜索接口要登录态 Cookie。登录 www.qimai.cn 后在浏览器 DevTools 里
-            复制 <code className="font-mono">PHPSESSID</code> 的值贴进来。
-            值存在系统凭据库(Windows 凭据管理器 / macOS 钥匙串),不会明文落盘。
+            登录 www.qimai.cn 后,在浏览器 DevTools 里复制{' '}
+            <code className="font-mono">PHPSESSID</code> 的值贴进来。
+            整条 Cookie 一起贴也认 —— 从 DevTools 里整条复制比单独挑一个字段容易。
+            (iOS 那几个源是公开数据,不配也能用。)
+          </p>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+            内容存进系统凭据库(Windows 凭据管理器 / macOS 钥匙串),不明文落盘,也不会发给我们。
           </p>
         </div>
 
         <div className="space-y-1.5">
-          <label className="block font-medium text-muted-foreground">PHPSESSID</label>
+          <label className="block font-medium text-muted-foreground">Cookie</label>
           <div className="flex gap-2">
             <input
               type={show ? 'text' : 'password'}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder={configured ? '已保存,输入新值覆盖' : '粘贴 PHPSESSID 的值'}
+              placeholder={configured ? '已保存,贴入新的覆盖' : 'PHPSESSID 的值,或整条 Cookie'}
               spellCheck={false}
               className="h-9 flex-1 rounded-md border border-input bg-background px-3 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
             />
@@ -129,8 +134,11 @@ export function ConfigDialog({
           )}
         </div>
 
+        {/* 过期的表现不是报错,而是一直搜出 0 条 —— 这一点不写出来,
+            用户只会以为是关键词打错了 */}
         <p className="text-[11px] text-muted-foreground">
-          登录态会过期。搜索时七麦 Android 那一路报「已失效」,回这里重新贴一次即可。
+          登录态会过期,而七麦对此不报错 —— 表现就是搜索一直返回 0 条。
+          真过期了结果区会直接说,回这里重新贴一次即可。
         </p>
       </section>
     </Dialog>

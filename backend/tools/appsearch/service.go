@@ -105,6 +105,14 @@ func runSourceSafe(run func() ([]SearchResultItem, error), status *SourceStatus,
 	}()
 	results, err := run()
 	if err != nil {
+		// 说明类"错误"不算失败:源是通的,只是结果空得可疑
+		var note *sourceNote
+		if errors.As(err, &note) {
+			status.OK = true
+			status.Count = 0
+			status.Note = note.msg
+			return nil
+		}
 		status.Error = err.Error()
 		return nil
 	}

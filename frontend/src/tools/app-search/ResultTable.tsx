@@ -101,6 +101,8 @@ function SourceBar({ statuses }: { statuses: appsearch.SourceStatus[] }) {
   const labelOf = (id: string) => SOURCES.find((s) => s.id === id)?.label ?? id
 
   const failed = statuses.filter((st) => !st.ok && st.error)
+  // 成功但空得可疑的,后端会附一句说明(见 SourceStatus.Note)
+  const noted = statuses.filter((st) => st.ok && st.note)
 
   return (
     <div className="space-y-1.5">
@@ -132,6 +134,19 @@ function SourceBar({ statuses }: { statuses: appsearch.SourceStatus[] }) {
           <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
           <span>
             <span className="font-medium">{labelOf(st.source)}</span>：{st.error}
+          </span>
+        </div>
+      ))}
+      {/* 「接口回了成功、零条」在界面上和「真的没这个 App」一模一样。
+          不说一句的话,用户只会反复换关键词 */}
+      {noted.map((st) => (
+        <div
+          key={st.source}
+          className="flex items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-400"
+        >
+          <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
+          <span>
+            <span className="font-medium">{labelOf(st.source)}</span>：{st.note}
           </span>
         </div>
       ))}
