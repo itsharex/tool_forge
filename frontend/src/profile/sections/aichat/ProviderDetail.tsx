@@ -7,6 +7,7 @@ import { useConfirm } from '@/components/ui/confirm'
 import { cn } from '@/lib/utils'
 import { ApiKeyField } from './ApiKeyField'
 import { ProviderAvatar } from './ProviderAvatar'
+import { modelGroup } from './modelGroup'
 
 const DEFAULT_BASE_URL_BY_TYPE: Record<ProviderType, string> = {
   openai: 'https://api.openai.com/v1',
@@ -52,26 +53,6 @@ function effectiveEndpoint(type: ProviderType, baseUrl: string): string {
   }
 }
 
-/**
- * 模型归到哪一组。
- *
- * 先看 `/`、空格、冒号 —— 有这些的话前半截就是厂商/系列(`deepseek-ai/DeepSeek-V3`)。
- * 都没有再按 `-`/`_` 取前两段:`grok-4.20-fast` → `grok-4.20`、`mimo-v2-omni` → `mimo-v2`。
- * 取两段而不是一段,是因为只取一段会把 gpt-5.6 和 gpt-4o 混成一堆 "gpt"。
- */
-function modelGroup(id: string): string {
-  const s = id.toLowerCase()
-  for (const d of ['/', ' ', ':']) {
-    if (s.includes(d)) return s.split(d)[0]
-  }
-  for (const d of ['-', '_']) {
-    if (s.includes(d)) {
-      const parts = s.split(d)
-      return parts.length > 1 ? parts[0] + d + parts[1] : parts[0]
-    }
-  }
-  return s
-}
 
 export function ProviderDetail({
   provider,

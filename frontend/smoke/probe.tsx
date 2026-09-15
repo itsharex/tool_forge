@@ -30,6 +30,7 @@ import { conversations } from './fixtures.cjs'
 // 直接引桩本体拿事件把手。build.cjs 只把含 "wailsjs" 的路径重定向到这里,
 // 相对路径原样解析 —— CJS 缓存保证跟组件用的是同一个模块实例
 import { __emit, __calls, __last } from './stub.cjs'
+import { modelGroup } from '../src/profile/sections/aichat/modelGroup'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 let failed = false
@@ -217,6 +218,46 @@ async function main() {
   )
 
   // 3) 配置页
+  // 模型分组是纯函数,直接断言 —— 原来是一张写死的前缀表,中转上新出的
+  // grok / gpt-6 / codex 全掉进「其他」,二十几个挤一堆等于没分组
+  try {
+    const cases: [string, string][] = [
+      // 表里从来没有 grok 这一条
+      ['grok-4.1-fast', 'Grok-4'],
+      ['grok-code-fast-1', 'Grok'],
+      // 新一代:旧表只列到 gpt-5
+      ['gpt-6-astra', 'GPT-6'],
+      ['gpt-5.6-luna', 'GPT-5'],
+      ['gpt-4o-mini', 'GPT-4'],
+      ['gpt-3.5-turbo', 'GPT-3'],
+      // 认不出版本就只按家族分,不进「其他」
+      ['codex-auto-review', 'Codex'],
+      ['deepseek-chat', 'DeepSeek'],
+      ['claude-opus-4-5', 'Claude-4'],
+      ['claude-3-7-sonnet', 'Claude-3'],
+      ['gemini-2.5-pro', 'Gemini-2'],
+      // 家族名自带版本号,显示不加横杠
+      ['qwen3-max', 'Qwen3'],
+      ['o3-mini', 'o3'],
+      // 中转的命名空间前缀是渠道不是型号,按它分会把一家糊成一堆
+      ['openai/gpt-4o', 'GPT-4'],
+      ['anthropic/claude-sonnet-4-5', 'Claude-4'],
+      // 按用途分的几类横跨各家,先于家族判断
+      ['text-embedding-3-small', 'Embedding'],
+      ['gpt-4o-mini-tts', 'TTS'],
+      ['gpt-image-1', 'Image'],
+      ['gemini-3-pro-image-preview', 'Image'],
+    ]
+    for (const [id, want] of cases) {
+      const got = modelGroup(id)
+      if (got !== want) throw new Error(`modelGroup(${id}) = ${got},应为 ${want}`)
+    }
+    if (modelGroup('gpt-6-astra') === '其他') throw new Error('新家族仍然掉进「其他」')
+    console.log('  OK   模型分组')
+  } catch (e) {
+    note('模型分组', e)
+  }
+
   await mount('供应商页', <ProvidersTab />, async () => {
     await click('API 密钥管理')
     await click('关闭')

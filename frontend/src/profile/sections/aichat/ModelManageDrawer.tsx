@@ -26,6 +26,7 @@ import type {
 } from '@/tools/ai-chat/types'
 import { useConfirm } from '@/components/ui/confirm'
 import { cn } from '@/lib/utils'
+import { modelGroup } from './modelGroup'
 
 /**
  * 可手动勾选的能力。顺序即 UI 顺序。
@@ -141,7 +142,7 @@ export function ModelManageDrawer({
   const grouped = useMemo(() => {
     const map = new Map<string, ModelInfo[]>()
     for (const m of filtered) {
-      const groupKey = m.ownedBy === 'custom' ? '自定义' : inferGroup(m.id)
+      const groupKey = m.ownedBy === 'custom' ? '自定义' : modelGroup(m.id)
       const arr = map.get(groupKey) ?? []
       arr.push(m)
       map.set(groupKey, arr)
@@ -604,27 +605,4 @@ function ModelCapabilityPanel({
       </div>
     </div>
   )
-}
-
-function inferGroup(id: string): string {
-  const lower = id.toLowerCase()
-  if (lower.startsWith('gpt-4o')) return 'GPT-4o'
-  if (lower.startsWith('gpt-4.1')) return 'GPT-4.1'
-  if (lower.startsWith('gpt-4')) return 'GPT-4'
-  if (lower.startsWith('gpt-5')) return 'GPT-5'
-  if (lower.startsWith('gpt-3.5')) return 'GPT-3.5'
-  if (lower.startsWith('o1')) return 'o1'
-  if (lower.startsWith('o3')) return 'o3'
-  if (lower.startsWith('o4')) return 'o4'
-  if (lower.includes('embedding')) return 'Embedding'
-  if (lower.includes('whisper')) return 'Whisper'
-  if (lower.includes('tts')) return 'TTS'
-  if (lower.includes('dall')) return 'DALL·E'
-  if (lower.startsWith('claude')) return 'Claude'
-  if (lower.startsWith('gemini')) return 'Gemini'
-  if (lower.startsWith('deepseek')) return 'DeepSeek'
-  if (lower.startsWith('glm')) return 'GLM'
-  if (lower.startsWith('qwen')) return 'Qwen'
-  if (lower.startsWith('moonshot')) return 'Moonshot'
-  return '其他'
 }
