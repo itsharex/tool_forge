@@ -709,12 +709,38 @@ async function main() {
     if (!txt().includes('acemcp')) throw new Error('再点一次没有回到全部')
 
     // 类型筛选
-    await mustClick('插件')
+    await mustClick('筛选：插件')
     if (txt().includes('node_repl')) throw new Error('切到「插件」还在显示 MCP')
     if (!txt().includes('codex@openai-codex')) throw new Error('切到「插件」没显示插件')
 
+    // 启停:只有工具箱自己的 MCP 给开关,别家的不给 —— 它们的「停用」语义各不相同,
+    // 替它猜一个只会把配置改坏。fixture 里 exa 是工具箱的且已停用。
+    // 回到「全部」视图再数:上面刚切到「插件」,MCP 区是不渲染的
+    await mustClick('筛选：全部')
+    // 来源过滤要真的清掉 —— 上面「再点一次回到全部」那步靠的是文字匹配,
+    // 匹配歪了就会一直停在某一家,后面数出来永远是 0 个
+    await click('清除')
+    if (!txt().includes('node_repl')) throw new Error('数开关前没有回到全部来源')
+    const toggles = (Array.from(document.querySelectorAll('button')) as HTMLElement[]).filter((b) =>
+      ['点击启用', '点击停用'].includes(b.getAttribute('title') || ''),
+    )
+    if (toggles.length !== 1) {
+      throw new Error(`应该只有工具箱那 1 条 MCP 有启停开关,实际 ${toggles.length} 个`)
+    }
+    delete __last.mcpToggle
+    await act(async () => {
+      toggles[0].click()
+    })
+    await act(async () => {
+      await sleep(80)
+    })
+    const t = __last.mcpToggle as { id: string; enabled: boolean } | undefined
+    if (!t || t.id !== 's2' || t.enabled !== true) {
+      throw new Error('点了停用的那条,应该调 ToggleMCPServer(s2, true),实际 ' + JSON.stringify(t))
+    }
+
     // md 要渲染着看,不是一屏 # 和 ---。切回 Skills,点开一个 SKILL.md
-    await mustClick('Skills')
+    await mustClick('筛选：Skills')
     const link = (Array.from(document.querySelectorAll('button')) as HTMLElement[]).find((b) =>
       (b.getAttribute('title') || '').includes('git-commit-helper') &&
       (b.getAttribute('title') || '').endsWith('SKILL.md'),
@@ -742,7 +768,7 @@ async function main() {
   // 20) 包名搜索:七麦要登录态,配置入口和"配没配"都得在这一页上看得见
   await mount('包名搜索 · 配置入口', <MemoryRouter><AppSearch /></MemoryRouter>, async () => {
     const txt = () => document.body.textContent || ''
-    // 桩里 HasQimaiPhpSessID 返回 false —— 源列表要当场说清楚,并且就地给入口。
+    // 桩里 HasQimaiCredential 返回 false —— 源列表要当场说清楚,并且就地给入口。
     // 原来这里写死一句"Profile 里配置",既不说配没配,也要自己去找那一页
     if (!txt().includes('未配置登录态')) {
       throw new Error('七麦源没有显示未配置状态')

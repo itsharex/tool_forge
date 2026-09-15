@@ -95,7 +95,7 @@ func TestSearchQimaiAndroid_Online(t *testing.T) {
 		Country: "cn",
 		Market:  6,
 	}
-	req.SetQimaiPhpSessID(sid)
+	req.SetQimaiCredential(sid)
 	resp, err := svc.Search(ctx, req)
 	if err != nil {
 		t.Fatalf("search: %v", err)

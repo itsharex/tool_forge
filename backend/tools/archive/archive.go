@@ -17,7 +17,11 @@ import (
 
 // Result 一次解包的统计
 type Result struct {
-	Files   int
+	Files int
+	// Dirs 目录成员数。它存在是为了让 Files == 0 说得清:
+	// 「只有几个空目录」和「解包把东西吞了」在只报文件数的日志里长得一模一样,
+	// 而取证报告里"这个目录我们没提到东西"是个要站得住的结论
+	Dirs    int
 	Renamed int
 	Skipped int
 	// samples 前几条改名记录,写进日志给人看
@@ -84,6 +88,7 @@ func Untar(r io.Reader, dest string) (Result, error) {
 
 		switch hdr.Typeflag {
 		case tar.TypeDir:
+			res.Dirs++
 			if err := os.MkdirAll(absTarget, 0o755); err != nil {
 				return res, err
 			}
@@ -172,4 +177,20 @@ func SafeSegment(seg string) string {
 		out += "_"
 	}
 	return out
+}
+
+// Describe 把统计写成一句人话。
+//
+// 文件数为 0 时特意点明「只有 N 个空目录」——那种情况下 "extracted 0 file(s)"
+// 看着像出了事,而它多半只是个本来就空的 media 目录。反过来,真的一个成员都
+// 没有时也说清楚,这才是该起疑的情况。
+func Describe(r Result) string {
+	switch {
+	case r.Files > 0:
+		return fmt.Sprintf("extracted %d file(s)", r.Files)
+	case r.Dirs > 0:
+		return fmt.Sprintf("extracted 0 file(s) —— 包里只有 %d 个空目录,没有文件", r.Dirs)
+	default:
+		return "extracted 0 file(s) —— 包里一个成员都没有"
+	}
 }

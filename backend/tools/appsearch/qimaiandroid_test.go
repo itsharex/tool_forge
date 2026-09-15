@@ -40,7 +40,7 @@ func TestQimaiAndroidExpiredIsReported(t *testing.T) {
 	qimaiStub(t, true)
 
 	_, err := searchQimaiAndroid(context.Background(), http.DefaultClient, "微信", "cn", 6, "stale")
-	if !errors.Is(err, ErrQimaiPHPSessIDExpired) {
+	if !errors.Is(err, ErrQimaiCredentialExpired) {
 		t.Fatalf("登录态过期应该明确报出来, got %v", err)
 	}
 	var note *sourceNote
@@ -61,7 +61,7 @@ func TestQimaiAndroidGenuinelyEmptyIsNoted(t *testing.T) {
 	if !errors.As(err, &note) {
 		t.Fatalf("登录态没问题的空结果应该给说明, got %v", err)
 	}
-	if errors.Is(err, ErrQimaiPHPSessIDExpired) {
+	if errors.Is(err, ErrQimaiCredentialExpired) {
 		t.Error("登录态是好的,不该报成失效 —— 误报会让人白重新登一次")
 	}
 }
@@ -77,7 +77,7 @@ func TestQimaiAndroidLogoutFlagIsError(t *testing.T) {
 	defer func() { qimaiBase = old }()
 
 	_, err := searchQimaiAndroid(context.Background(), http.DefaultClient, "微信", "cn", 6, "x")
-	if !errors.Is(err, ErrQimaiPHPSessIDExpired) {
+	if !errors.Is(err, ErrQimaiCredentialExpired) {
 		t.Errorf("is_logout=1 应该报失效, got %v", err)
 	}
 }
@@ -85,7 +85,7 @@ func TestQimaiAndroidLogoutFlagIsError(t *testing.T) {
 // 没配凭据仍然是失败
 func TestQimaiAndroidMissingSessionIsError(t *testing.T) {
 	_, err := searchQimaiAndroid(context.Background(), http.DefaultClient, "微信", "cn", 6, "")
-	if !errors.Is(err, ErrQimaiPHPSessIDRequired) {
+	if !errors.Is(err, ErrQimaiCredentialRequired) {
 		t.Errorf("没配凭据应该直接报要配置, got %v", err)
 	}
 }

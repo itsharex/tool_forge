@@ -34,8 +34,8 @@ type SearchRequest struct {
 	// 前端"包名搜索"工具页传 20 保留浏览体验,外部 API 默认 5 拿到精简结果。
 	LimitPerSource int `json:"limit_per_source,omitempty"`
 
-	// qimaiPhpSessID 由 app.go 从 keyring 读入后注入，前端看不到也传不进来。
-	qimaiPhpSessID string
+	// qimaiCredential 由 app.go 从 keyring 读入后注入，前端看不到也传不进来。
+	qimaiCredential string
 }
 
 // DefaultLimitPerSource 外部 API 调用 / 调用方未指定时的默认每源上限。
@@ -44,13 +44,13 @@ const DefaultLimitPerSource = 5
 // MaxLimitPerSource 上限,避免调用方传超大值把后端打爆。
 const MaxLimitPerSource = 50
 
-// SetQimaiPhpSessID 供 app 层注入（保持 SearchRequest 的前端可序列化性）。
-func (r *SearchRequest) SetQimaiPhpSessID(v string) { r.qimaiPhpSessID = v }
-func (r *SearchRequest) QimaiPhpSessID() string     { return r.qimaiPhpSessID }
+// SetQimaiCredential 供 app 层注入（保持 SearchRequest 的前端可序列化性）。
+func (r *SearchRequest) SetQimaiCredential(v string) { r.qimaiCredential = v }
+func (r *SearchRequest) QimaiCredential() string     { return r.qimaiCredential }
 
-// KeyringQimaiPhpSessID 七麦 PHPSESSID 在系统凭据库中使用的 key。
+// KeyringQimaiCredential 七麦 PHPSESSID 在系统凭据库中使用的 key。
 // 前后端约定一致，Profile 存、Service 读。
-const KeyringQimaiPhpSessID = "tool-forge:appsearch:qimai-phpsessid"
+const KeyringQimaiCredential = "tool-forge:appsearch:qimai-phpsessid"
 
 // SearchResultItem 单条搜索结果（跨源统一字段）
 type SearchResultItem struct {

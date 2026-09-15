@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Blocks, Plug, RefreshCw, Sparkles } from 'lucide-react'
-import { ScanAIConfig } from '../../../wailsjs/go/main/App'
+import { ScanAIConfig, ToggleMCPServer } from '../../../wailsjs/go/main/App'
 import type { aiconfig } from '../../../wailsjs/go/models'
 import { ToolShell } from '@/components/tool/ToolShell'
 import { Button } from '@/components/ui/button'
+import { useConfirm } from '@/components/ui/confirm'
 import { cn } from '@/lib/utils'
 import { meta } from './meta'
 import { ORIGINS, originMeta } from './origins'
@@ -34,6 +35,9 @@ export default function AIConfigTool() {
   const [origin, setOrigin] = useState('')
   const [kind, setKind] = useState<Kind>('all')
   const [viewing, setViewing] = useState('')
+  // 正在启停的那条(工具箱自己的 MCP 的 id)
+  const [busy, setBusy] = useState('')
+  const dialog = useConfirm()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -50,6 +54,23 @@ export default function AIConfigTool() {
   useEffect(() => {
     void load()
   }, [load])
+
+  // 只有工具箱自己的 MCP 能在这页启停 —— 复用设置页那条路,改完重扫,
+  // 让来源墙上的计数和列表状态一起刷新
+  const toggle = async (m: aiconfig.MCPEntry) => {
+    if (!m.toggleable || !m.id) return
+    setBusy(m.id)
+    try {
+      const err = ((await ToggleMCPServer(m.id, !m.enabled)) as string) || ''
+      if (err) {
+        await dialog({ title: '切换失败', message: err, confirmLabel: '知道了' })
+        return
+      }
+      await load()
+    } finally {
+      setBusy('')
+    }
+  }
 
   const mcp = useMemo(
     () => (snap?.mcp ?? []).filter((m) => !origin || m.source.origin === origin),
@@ -179,20 +200,20 @@ export default function AIConfigTool() {
 
         {/* ---- 类型筛选 ---- */}
         <div className="flex items-center gap-1 border-b border-border">
-          <KindTab active={kind === 'all'} onClick={() => setKind('all')}>
+          <KindTab title="筛选：全部" active={kind === 'all'} onClick={() => setKind('all')}>
             全部
           </KindTab>
-          <KindTab active={kind === 'mcp'} onClick={() => setKind('mcp')}>
+          <KindTab title="筛选：MCP 服务器" active={kind === 'mcp'} onClick={() => setKind('mcp')}>
             <Plug className="h-3.5 w-3.5" />
             MCP 服务器
             <Count n={origin ? mcp.length : total.mcp} />
           </KindTab>
-          <KindTab active={kind === 'skills'} onClick={() => setKind('skills')}>
+          <KindTab title="筛选：Skills" active={kind === 'skills'} onClick={() => setKind('skills')}>
             <Sparkles className="h-3.5 w-3.5" />
             Skills
             <Count n={origin ? skills.length : total.skills} />
           </KindTab>
-          <KindTab active={kind === 'plugins'} onClick={() => setKind('plugins')}>
+          <KindTab title="筛选：插件" active={kind === 'plugins'} onClick={() => setKind('plugins')}>
             <Blocks className="h-3.5 w-3.5" />
             插件
             <Count n={origin ? plugins.length : total.plugins} />
@@ -216,7 +237,7 @@ export default function AIConfigTool() {
                 {kind === 'all' && (
                   <SectionTitle title="MCP 服务器" count={mcp.length} icon={<Plug className="h-4 w-4" />} />
                 )}
-                <MCPList items={mcp} dupes={mcpDupes} onOpen={setViewing} />
+                <MCPList items={mcp} dupes={mcpDupes} onOpen={setViewing} onToggle={toggle} busy={busy} />
               </section>
             )}
             {(kind === 'all' || kind === 'skills') && (
@@ -250,10 +271,14 @@ function MCPList({
   items,
   dupes,
   onOpen,
+  onToggle,
+  busy,
 }: {
   items: aiconfig.MCPEntry[]
   dupes: Set<string>
   onOpen: (p: string) => void
+  onToggle: (m: aiconfig.MCPEntry) => void
+  busy: string
 }) {
   if (items.length === 0) return <Empty>没有 MCP 服务器</Empty>
   return (
@@ -269,7 +294,24 @@ function MCPList({
                 多处重复
               </Tag>
             )}
-            {!m.enabled && <Tag>已停用</Tag>}
+            {m.toggleable ? (
+              <button
+                type="button"
+                onClick={() => onToggle(m)}
+                disabled={busy === m.id}
+                title={m.enabled ? '点击停用' : '点击启用'}
+                className={cn(
+                  'ml-auto h-6 shrink-0 rounded-md border px-2 text-[10px] transition-colors disabled:opacity-50',
+                  m.enabled
+                    ? 'border-info/40 bg-info/10 text-info'
+                    : 'border-border text-muted-foreground hover:bg-secondary',
+                )}
+              >
+                {busy === m.id ? '…' : m.enabled ? '已启用' : '已停用'}
+              </button>
+            ) : (
+              !m.enabled && <Tag>已停用</Tag>
+            )}
           </div>
           <div className="mt-1.5 truncate font-mono text-[11px] text-muted-foreground" title={m.url || m.command}>
             {m.url || [m.command, ...(m.args ?? [])].join(' ')}
@@ -414,15 +456,19 @@ function Count({ n }: { n: number }) {
 function KindTab({
   active,
   onClick,
+  title,
   children,
 }: {
   active: boolean
   onClick: () => void
+  /** 精确的标签名。文字里还拼着计数,textContent 是「插件2」,按文字找不到它 */
+  title: string
   children: React.ReactNode
 }) {
   return (
     <button
       onClick={onClick}
+      title={title}
       className={cn(
         'relative flex h-9 items-center gap-1.5 px-3 text-sm transition-colors',
         active ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground',

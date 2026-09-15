@@ -76,12 +76,16 @@ const special = {
     })
   },
   SaveAIConfigFile: () => Promise.resolve(),
+  ToggleMCPServer: (id, enabled) => {
+    last.mcpToggle = { id, enabled }
+    return Promise.resolve('')
+  },
 
   // ---- 取证 / 包名搜索的配置 ----
   GetForensicConfig: () => Promise.resolve({ binPath: '', enabled: false, defaultSshAddr: '' }),
   SaveForensicConfig: () => Promise.resolve(),
-  HasQimaiPhpSessID: () => Promise.resolve(false),
-  SaveQimaiPhpSessID: () => Promise.resolve(),
+  HasQimaiCredential: () => Promise.resolve(false),
+  SaveQimaiCredential: () => Promise.resolve(),
 
   // ---- AI 配置 ----
   ListAIProviders: () => Promise.resolve(fx.providers),

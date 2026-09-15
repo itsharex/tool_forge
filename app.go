@@ -822,15 +822,15 @@ func (a *App) CancelForensic(jobID string) error {
 // SearchApp 多源并发搜索 app 包名/基本信息。
 // 需要 PHPSESSID 的源（七麦 Android）在此从系统凭据库读取并注入。
 func (a *App) SearchApp(req appsearch.SearchRequest) (*appsearch.SearchResponse, error) {
-	if needsQimaiPhpSessID(req.Sources) {
-		if sid, err := system.GetPassword(appsearch.KeyringQimaiPhpSessID); err == nil && sid != "" {
-			req.SetQimaiPhpSessID(sid)
+	if needsQimaiCredential(req.Sources) {
+		if sid, err := system.GetPassword(appsearch.KeyringQimaiCredential); err == nil && sid != "" {
+			req.SetQimaiCredential(sid)
 		}
 	}
 	return a.appsearch.Search(a.ctx, req)
 }
 
-func needsQimaiPhpSessID(sources []appsearch.SourceID) bool {
+func needsQimaiCredential(sources []appsearch.SourceID) bool {
 	for _, s := range sources {
 		if s == appsearch.SourceQimaiAndroid {
 			return true
@@ -839,18 +839,18 @@ func needsQimaiPhpSessID(sources []appsearch.SourceID) bool {
 	return false
 }
 
-// HasQimaiPhpSessID 供 Profile 页判断凭据库里是否已保存 PHPSESSID（不泄露值）。
-func (a *App) HasQimaiPhpSessID() bool {
-	v, err := system.GetPassword(appsearch.KeyringQimaiPhpSessID)
+// HasQimaiCredential 供 Profile 页判断凭据库里是否已保存 PHPSESSID（不泄露值）。
+func (a *App) HasQimaiCredential() bool {
+	v, err := system.GetPassword(appsearch.KeyringQimaiCredential)
 	return err == nil && v != ""
 }
 
-// SaveQimaiPhpSessID 保存 PHPSESSID 到系统凭据库；空字符串等价于删除。
-func (a *App) SaveQimaiPhpSessID(value string) error {
+// SaveQimaiCredential 保存 PHPSESSID 到系统凭据库；空字符串等价于删除。
+func (a *App) SaveQimaiCredential(value string) error {
 	if value == "" {
-		return system.DeletePassword(appsearch.KeyringQimaiPhpSessID)
+		return system.DeletePassword(appsearch.KeyringQimaiCredential)
 	}
-	return system.SavePassword(appsearch.KeyringQimaiPhpSessID, value)
+	return system.SavePassword(appsearch.KeyringQimaiCredential, value)
 }
 
 // ================ System ================

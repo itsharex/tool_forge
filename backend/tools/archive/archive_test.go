@@ -79,6 +79,10 @@ func TestUntarNormal(t *testing.T) {
 	if res.Files != 1 {
 		t.Errorf("应该解出 1 个文件,得到 %d", res.Files)
 	}
+	// 那个 app/ 目录成员也要数上,不然 Files == 0 的包说不清是空目录还是空包
+	if res.Dirs != 1 {
+		t.Errorf("应该数到 1 个目录,得到 %d", res.Dirs)
+	}
 	got, err2 := os.ReadFile(filepath.Join(dest, "app", "shared_prefs", "a.xml"))
 	if err2 != nil {
 		t.Fatalf("解出来的文件不在: %v", err2)

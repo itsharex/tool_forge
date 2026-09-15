@@ -132,7 +132,7 @@ func (s *Service) runSource(ctx context.Context, src SourceID, keyword, country 
 	case SourceQimaiIOS:
 		return searchQimaiIOS(ctx, s.client, keyword, country)
 	case SourceQimaiAndroid:
-		return searchQimaiAndroid(ctx, s.client, keyword, country, req.Market, req.qimaiPhpSessID)
+		return searchQimaiAndroid(ctx, s.client, keyword, country, req.Market, req.qimaiCredential)
 	case SourceYingYongBao:
 		return searchYingYongBao(ctx, s.client, keyword, 20)
 	case SourceGooglePlay:

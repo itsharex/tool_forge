@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ToolShell } from '@/components/tool/ToolShell'
-import { SearchApp, HasQimaiPhpSessID } from '../../../wailsjs/go/main/App'
+import { SearchApp, HasQimaiCredential } from '../../../wailsjs/go/main/App'
 import type { appsearch } from '../../../wailsjs/go/models'
 import { SearchForm, type FormState } from './SearchForm'
 import { ResultTable } from './ResultTable'
@@ -28,7 +28,7 @@ export default function AppSearch() {
 
   const refreshConfigured = useCallback(async () => {
     try {
-      setConfigured((await HasQimaiPhpSessID()) as unknown as boolean)
+      setConfigured((await HasQimaiCredential()) as unknown as boolean)
     } catch {
       setConfigured(false)
     }

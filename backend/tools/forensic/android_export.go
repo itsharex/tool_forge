@@ -425,8 +425,8 @@ func (e *androidExporter) exportOne(ctx context.Context, remote string) error {
 
 	// 拉和解现在是同时发生的,分不开也就不该分开报 ——
 	// 给两个数字会让人以为它们是前后两段
-	e.log("extracted %d file(s), %s (打包 %s / 拉取+解包 %s)",
-		res.Files, humanSize(counted.n),
+	e.log("%s, %s (打包 %s / 拉取+解包 %s)",
+		archive.Describe(res), humanSize(counted.n),
 		round(packTook), round(time.Since(pullStart)))
 	reportUntar(res, e.log)
 	return nil

@@ -64,12 +64,12 @@ type qimaiAndroidDetailResp struct {
 	IsLogout int                     `json:"is_logout"`
 }
 
-// ErrQimaiPHPSessIDRequired 用户还没配七麦登录态
-var ErrQimaiPHPSessIDRequired = errors.New("七麦 Android 搜索需要登录态，请在包名搜索页右上角的「配置」里填入 PHPSESSID")
+// ErrQimaiCredentialRequired 用户还没配七麦登录态
+var ErrQimaiCredentialRequired = errors.New("七麦 Android 搜索需要登录态，请在包名搜索页右上角的「配置」里填入 PHPSESSID")
 
-// ErrQimaiPHPSessIDExpired 登录态失效。
+// ErrQimaiCredentialExpired 登录态失效。
 // 七麦对此不报错(搜索照回"成功 + 空列表"),是我们问了详情接口才确认的
-var ErrQimaiPHPSessIDExpired = errors.New("七麦登录态已失效（搜索会一直返回 0 条），请在包名搜索页右上角的「配置」里重新贴一次")
+var ErrQimaiCredentialExpired = errors.New("七麦登录态已失效（搜索会一直返回 0 条），请在包名搜索页右上角的「配置」里重新贴一次")
 
 // sourceNote 一条非致命说明(见 SourceStatus.Note)。
 // 做成 error 只是为了搭现成的返回通道,它不表示这一路失败了。
@@ -136,7 +136,7 @@ const qimaiCodeNeedLogin = 10001
 // searchQimaiAndroid 七麦 Android 搜索 + 并发回填每条的真实包名（/andapp/detail）。
 func searchQimaiAndroid(ctx context.Context, client *http.Client, keyword, country string, market int, phpSessID string) ([]SearchResultItem, error) {
 	if phpSessID == "" {
-		return nil, ErrQimaiPHPSessIDRequired
+		return nil, ErrQimaiCredentialRequired
 	}
 	if country == "" {
 		country = "cn"
@@ -186,14 +186,14 @@ func searchQimaiAndroid(ctx context.Context, client *http.Client, keyword, count
 	// 但它并不可靠：登录态不全时七麦照样给 is_logout=0 + 成功 + 空列表，
 	// 真正会直说的是 /andapp/detail（回 code=10001「请登录」）。所以空结果单独出一条说明。
 	if parsed.IsLogout == 1 {
-		return nil, ErrQimaiPHPSessIDExpired
+		return nil, ErrQimaiCredentialExpired
 	}
 
 	// 「成功 + 空」既可能是真搜不到,也可能是登录态过期 —— 搜索接口对两者一视同仁,
 	// 问一句详情接口才分得清(见 qimaiSessionDead)
 	if len(parsed.AppList) == 0 {
 		if qimaiSessionDead(ctx, client, phpSessID) {
-			return nil, ErrQimaiPHPSessIDExpired
+			return nil, ErrQimaiCredentialExpired
 		}
 		return nil, errQimaiAndroidEmpty
 	}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AlertCircle, CheckCircle2, Eye, EyeOff, RefreshCw } from 'lucide-react'
-import { HasQimaiPhpSessID, SaveQimaiPhpSessID } from '../../../wailsjs/go/main/App'
+import { HasQimaiCredential, SaveQimaiCredential } from '../../../wailsjs/go/main/App'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 
@@ -27,7 +27,7 @@ export function ConfigDialog({
 
   const refresh = async () => {
     try {
-      setConfigured((await HasQimaiPhpSessID()) as unknown as boolean)
+      setConfigured((await HasQimaiCredential()) as unknown as boolean)
     } catch {
       setConfigured(false)
     }
@@ -40,7 +40,7 @@ export function ConfigDialog({
   const write = async (next: string) => {
     setSaving(true)
     try {
-      await SaveQimaiPhpSessID(next)
+      await SaveQimaiCredential(next)
       setValue('')
       await refresh()
       onChanged()

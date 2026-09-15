@@ -24,7 +24,7 @@ func TestXianyuHuawei_Online(t *testing.T) {
 		Sources: []SourceID{SourceQimaiAndroid},
 		Market:  6,
 	}
-	req.SetQimaiPhpSessID(sid)
+	req.SetQimaiCredential(sid)
 	resp, err := svc.Search(ctx, req)
 	if err != nil {
 		t.Fatalf("search returned error: %v", err)

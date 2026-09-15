@@ -290,7 +290,7 @@ func (e *iosExporter) exportOne(ctx context.Context, remote string) error {
 		return ctx.Err()
 	}
 
-	e.log("extracted %d file(s), %s (%s)", res.Files, humanSize(counted.n), round(time.Since(t0)))
+	e.log("%s, %s (%s)", archive.Describe(res), humanSize(counted.n), round(time.Since(t0)))
 	reportUntar(res, e.log)
 	return nil
 }

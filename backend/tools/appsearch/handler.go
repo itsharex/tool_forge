@@ -38,9 +38,9 @@ func (h *Handler) Handle(ctx context.Context, body []byte) ([]byte, error) {
 		}
 	}
 	// 七麦 Android 源需要 PHPSESSID,从 keyring 注入
-	if needsQimaiPhpSessIDLocal(req.Sources) {
-		if sid, err := system.GetPassword(KeyringQimaiPhpSessID); err == nil && sid != "" {
-			req.SetQimaiPhpSessID(sid)
+	if needsQimaiCredentialLocal(req.Sources) {
+		if sid, err := system.GetPassword(KeyringQimaiCredential); err == nil && sid != "" {
+			req.SetQimaiCredential(sid)
 		}
 	}
 	resp, err := h.svc.Search(ctx, req)
@@ -51,7 +51,7 @@ func (h *Handler) Handle(ctx context.Context, body []byte) ([]byte, error) {
 }
 
 // 复制 app.go 的同名小函数,避免 backend 内部循环 import。
-func needsQimaiPhpSessIDLocal(sources []SourceID) bool {
+func needsQimaiCredentialLocal(sources []SourceID) bool {
 	for _, s := range sources {
 		if s == SourceQimaiAndroid {
 			return true
