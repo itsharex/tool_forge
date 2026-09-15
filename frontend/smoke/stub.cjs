@@ -38,6 +38,10 @@ const count = (name) => {
   calls[name] = (calls[name] || 0) + 1
 }
 
+// 最后一次落库的载荷。次数够不着的场景要它 —— 比如"自动保存"既没有按钮可点,
+// 也没有回显,只能从这里看它到底存了什么进去
+const last = {}
+
 const special = {
   // ---- AI 配置 ----
   ListAIProviders: () => Promise.resolve(fx.providers),
@@ -52,6 +56,10 @@ const special = {
   },
   GetAIModelSpec: (_pid, mid) => Promise.resolve(fx.modelSpec(mid)),
   GetAIConfig: () => Promise.resolve({ defaultProviderId: '', defaultModelId: '' }),
+  SaveAIConfig: (c) => {
+    last.aiConfig = c
+    return Promise.resolve('')
+  },
 
   // ---- 会话 ----
   ListAIConversations: () =>
@@ -169,3 +177,4 @@ module.exports.__emit = (name, payload) => {
   for (const cb of listeners.get(name) || []) cb(payload)
 }
 module.exports.__calls = calls
+module.exports.__last = last

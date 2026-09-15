@@ -29,7 +29,7 @@ import { ConfirmProvider } from '../src/components/ui/confirm'
 import { conversations } from './fixtures.cjs'
 // 直接引桩本体拿事件把手。build.cjs 只把含 "wailsjs" 的路径重定向到这里,
 // 相对路径原样解析 —— CJS 缓存保证跟组件用的是同一个模块实例
-import { __emit, __calls } from './stub.cjs'
+import { __emit, __calls, __last } from './stub.cjs'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 let failed = false
@@ -240,6 +240,29 @@ async function main() {
     // 打开这个开关等于让模型读本机文件、且读到的内容会外发。
     // 代价必须写在开关旁边 —— 藏进文档就等于没说
     if (!txt.includes('发给模型供应商')) throw new Error('没有说明工具结果会外发')
+
+    // 勾一下就该落库。这一页原来只有一张卡片里有保存按钮,却管着三张卡片的设置 ——
+    // 在别的卡片上改完不滚回去点它就白改,而那个按钮在没启用供应商时还是禁用的
+    delete __last.aiConfig
+    const boxes = Array.from(
+      document.querySelectorAll('input[type=checkbox]'),
+    ) as HTMLInputElement[]
+    const toolBox = boxes[boxes.length - 1]
+    if (!toolBox) throw new Error('找不到工具箱工具的复选框')
+    await act(async () => {
+      toolBox.click()
+    })
+    await act(async () => {
+      await sleep(60)
+    })
+    const saved = __last.aiConfig as { localTools?: boolean } | undefined
+    if (!saved) throw new Error('勾选后没有落库 —— 还得再点一次保存才生效')
+    if (saved.localTools !== true) {
+      throw new Error('落库的 localTools 不是 true: ' + JSON.stringify(saved))
+    }
+    if (!(document.body.textContent || '').includes('已保存')) {
+      throw new Error('自动保存没有任何回显,用户没法确认存上了')
+    }
   })
 
   // 4) 导出弹窗:切勾选项要重新渲染预览,点保存要走"用户取消"那条分支

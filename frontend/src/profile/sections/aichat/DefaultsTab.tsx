@@ -1,66 +1,111 @@
-import { useEffect, useState } from 'react'
-import { MessagesSquare, Save, Sparkles, Wrench } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Check, Loader2, MessagesSquare, Sparkles, Wrench } from 'lucide-react'
 import {
   ListAIProviders,
   GetAIConfig,
   SaveAIConfig,
 } from '../../../../wailsjs/go/main/App'
 import type { Provider, AIConfig } from '@/tools/ai-chat/types'
-import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/components/ui/confirm'
+import { cn } from '@/lib/utils'
+
+/**
+ * 这一页的全部可改项。
+ *
+ * 合成一个对象而不是散着放六个 useState:后端保存是整个结构体盖上去的,
+ * 落库时必须把六项一起带上 —— 散着放的话每加一项都得记得在保存那里补一行,
+ * 漏了就是"改了别的设置顺手把这一项关掉"。
+ */
+type Draft = {
+  providerId: string
+  modelId: string
+  autoTitle: boolean
+  titleProviderId: string
+  titleModelId: string
+  localTools: boolean
+}
+
+const EMPTY: Draft = {
+  providerId: '',
+  modelId: '',
+  autoTitle: true,
+  titleProviderId: '',
+  titleModelId: '',
+  localTools: false,
+}
+
+/** 落库形态。半套的"起标题专用模型"在这里抹平,后端就不用每次判两个字段是不是都在 */
+function toWire(d: Draft): AIConfig {
+  return {
+    defaultProviderId: d.providerId,
+    defaultModelId: d.modelId,
+    autoTitleOff: !d.autoTitle,
+    titleProviderId: d.titleModelId ? d.titleProviderId : '',
+    titleModelId: d.titleProviderId ? d.titleModelId : '',
+    localTools: d.localTools,
+  }
+}
 
 export function DefaultsTab() {
   const dialog = useConfirm()
   const [providers, setProviders] = useState<Provider[]>([])
-  const [providerId, setProviderId] = useState('')
-  const [modelId, setModelId] = useState('')
-  // 自动起标题。后端存的是"关"(老配置没有这个字段 → 零值 → 开着),
-  // 这里翻成正向的"开"再给界面用,免得整个组件里到处都是双重否定
-  const [autoTitle, setAutoTitle] = useState(true)
-  const [titleProviderId, setTitleProviderId] = useState('')
-  const [titleModelId, setTitleModelId] = useState('')
-  const [localTools, setLocalTools] = useState(false)
-  const [savedFlash, setSavedFlash] = useState(false)
+  const [draft, setDraft] = useState<Draft>(EMPTY)
+  const [state, setState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  // 最后一次确实写进磁盘的值。存失败时退回它 —— 界面不能显示成存进去了
+  const savedRef = useRef<Draft>(EMPTY)
+  const flashRef = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
     void (async () => {
       const list = ((await ListAIProviders()) ?? []) as unknown as Provider[]
       setProviders(list)
       const cfg = (await GetAIConfig()) as unknown as AIConfig
-      setProviderId(cfg.defaultProviderId ?? '')
-      setModelId(cfg.defaultModelId ?? '')
-      setAutoTitle(!cfg.autoTitleOff)
-      setTitleProviderId(cfg.titleProviderId ?? '')
-      setTitleModelId(cfg.titleModelId ?? '')
-      setLocalTools(!!cfg.localTools)
+      const got: Draft = {
+        providerId: cfg.defaultProviderId ?? '',
+        modelId: cfg.defaultModelId ?? '',
+        // 后端存的是"关"(老配置没有这个字段 → 零值 → 开着),
+        // 这里翻成正向的"开"再给界面用,免得整个组件里到处都是双重否定
+        autoTitle: !cfg.autoTitleOff,
+        titleProviderId: cfg.titleProviderId ?? '',
+        titleModelId: cfg.titleModelId ?? '',
+        localTools: !!cfg.localTools,
+      }
+      setDraft(got)
+      savedRef.current = got
     })()
+    return () => clearTimeout(flashRef.current)
   }, [])
 
-  const enabled = providers.filter((p) => p.enabled && p.models.length > 0)
-  const currentProvider = enabled.find((p) => p.id === providerId)
-  const modelOptions = currentProvider?.models ?? []
-  const titleProvider = enabled.find((p) => p.id === titleProviderId)
-
-  const onSave = async () => {
-    const err = (await SaveAIConfig({
-      defaultProviderId: providerId,
-      defaultModelId: modelId,
-      autoTitleOff: !autoTitle,
-      // 只选了供应商没选模型等于没配。半套配置存下去,后端每次都要判一遍
-      // "两个字段是不是都在" —— 干脆在这里就不让它成形
-      titleProviderId: titleModelId ? titleProviderId : '',
-      titleModelId: titleProviderId ? titleModelId : '',
-      // 后端是整个结构体盖上去的,这里漏一个字段就等于把它关掉 ——
-      // 保存个默认模型,工具箱工具就被顺手关了
-      localTools,
-    } as unknown as never)) as unknown as string
+  /**
+   * 改一项存一项。
+   *
+   * 这一页原来只有一个保存按钮,而它长在「默认助手模型」那张卡片里 —— 下面两张卡片
+   * 的开关看着是独立的,实际上要滚回去点那个按钮才算数,不点就白改。更糟的是那个按钮
+   * 在"还没有启用任何供应商"时是禁用的:新用户连把「工具箱工具」打开都做不到。
+   *
+   * 这一页全是开关和下拉,没有需要"编辑到一半"的文本框,那就不该有保存这一步。
+   */
+  const apply = async (patch: Partial<Draft>) => {
+    const next = { ...draft, ...patch }
+    setDraft(next)
+    setState('saving')
+    const err = (await SaveAIConfig(toWire(next) as unknown as never)) as unknown as string
     if (err) {
+      setDraft(savedRef.current)
+      setState('idle')
       await dialog({ title: '保存失败', message: err, confirmLabel: '知道了' })
       return
     }
-    setSavedFlash(true)
-    setTimeout(() => setSavedFlash(false), 1500)
+    savedRef.current = next
+    setState('saved')
+    clearTimeout(flashRef.current)
+    flashRef.current = setTimeout(() => setState('idle'), 1500)
   }
+
+  const enabled = providers.filter((p) => p.enabled && p.models.length > 0)
+  const currentProvider = enabled.find((p) => p.id === draft.providerId)
+  const modelOptions = currentProvider?.models ?? []
+  const titleProvider = enabled.find((p) => p.id === draft.titleProviderId)
 
   return (
     <div className="max-w-2xl space-y-4">
@@ -68,6 +113,7 @@ export function DefaultsTab() {
         <div className="mb-3 flex items-center gap-2 text-sm font-medium">
           <MessagesSquare className="h-4 w-4 text-info" />
           默认助手模型
+          <SaveState state={state} />
         </div>
         <p className="mb-4 text-xs text-muted-foreground">
           新建对话时使用的模型,可在对话顶部随时切换
@@ -82,11 +128,10 @@ export function DefaultsTab() {
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">供应商</label>
               <select
-                value={providerId}
+                value={draft.providerId}
                 onChange={(e) => {
-                  setProviderId(e.target.value)
                   const next = enabled.find((p) => p.id === e.target.value)
-                  setModelId(next?.models[0] ?? '')
+                  void apply({ providerId: e.target.value, modelId: next?.models[0] ?? '' })
                 }}
                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
               >
@@ -102,8 +147,8 @@ export function DefaultsTab() {
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">模型</label>
               <select
-                value={modelId}
-                onChange={(e) => setModelId(e.target.value)}
+                value={draft.modelId}
+                onChange={(e) => void apply({ modelId: e.target.value })}
                 disabled={!currentProvider}
                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
               >
@@ -117,26 +162,19 @@ export function DefaultsTab() {
             </div>
           </div>
         )}
-
-        <div className="mt-4 flex items-center gap-2">
-          <Button onClick={onSave} disabled={enabled.length === 0} size="sm">
-            <Save className="h-3.5 w-3.5" />
-            保存
-          </Button>
-          {savedFlash && <span className="text-xs text-success">已保存</span>}
-        </div>
       </div>
 
       <div className="rounded-lg border border-border bg-card p-5">
         <div className="mb-3 flex items-center gap-2 text-sm font-medium">
           <Sparkles className="h-4 w-4 text-info" />
           自动起标题
+          <SaveState state={state} />
         </div>
         <label className="flex cursor-pointer items-start gap-2">
           <input
             type="checkbox"
-            checked={autoTitle}
-            onChange={(e) => setAutoTitle(e.target.checked)}
+            checked={draft.autoTitle}
+            onChange={(e) => void apply({ autoTitle: e.target.checked })}
             className="mt-0.5 h-3.5 w-3.5 shrink-0"
           />
           <span className="text-xs">
@@ -147,7 +185,7 @@ export function DefaultsTab() {
           </span>
         </label>
 
-        {autoTitle && (
+        {draft.autoTitle && (
           <div className="mt-4 space-y-2">
             <div className="text-xs font-medium text-muted-foreground">
               专用模型
@@ -155,11 +193,8 @@ export function DefaultsTab() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <select
-                value={titleProviderId}
-                onChange={(e) => {
-                  setTitleProviderId(e.target.value)
-                  setTitleModelId('')
-                }}
+                value={draft.titleProviderId}
+                onChange={(e) => void apply({ titleProviderId: e.target.value, titleModelId: '' })}
                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
               >
                 <option value="">— 跟随会话 —</option>
@@ -170,8 +205,8 @@ export function DefaultsTab() {
                 ))}
               </select>
               <select
-                value={titleModelId}
-                onChange={(e) => setTitleModelId(e.target.value)}
+                value={draft.titleModelId}
+                onChange={(e) => void apply({ titleModelId: e.target.value })}
                 disabled={!titleProvider}
                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
               >
@@ -195,12 +230,13 @@ export function DefaultsTab() {
         <div className="mb-3 flex items-center gap-2 text-sm font-medium">
           <Wrench className="h-4 w-4 text-info" />
           工具箱工具
+          <SaveState state={state} />
         </div>
         <label className="flex cursor-pointer items-start gap-2">
           <input
             type="checkbox"
-            checked={localTools}
-            onChange={(e) => setLocalTools(e.target.checked)}
+            checked={draft.localTools}
+            onChange={(e) => void apply({ localTools: e.target.checked })}
             className="mt-0.5 h-3.5 w-3.5 shrink-0"
           />
           <span className="text-xs">
@@ -228,5 +264,33 @@ export function DefaultsTab() {
         </p>
       </div>
     </div>
+  )
+}
+
+/**
+ * 保存状态。三张卡片各放一个 —— 共用一处的话,改下面卡片时提示在屏幕外,
+ * 等于没提示:用户刚丢过一次修改,更需要看见"这次真的存上了"。
+ */
+function SaveState({ state }: { state: 'idle' | 'saving' | 'saved' }) {
+  if (state === 'idle') return null
+  return (
+    <span
+      className={cn(
+        'flex items-center gap-1 text-[11px] font-normal',
+        state === 'saved' ? 'text-success' : 'text-muted-foreground',
+      )}
+    >
+      {state === 'saving' ? (
+        <>
+          <Loader2 className="h-3 w-3 animate-spin" />
+          保存中
+        </>
+      ) : (
+        <>
+          <Check className="h-3 w-3" />
+          已保存
+        </>
+      )}
+    </span>
   )
 }
